@@ -4,19 +4,20 @@ import { Show } from "solid-js";
 import { useOAuthLogin } from "start-oauth";
 import { formLogin } from "~/auth";
 import { Discord } from "~/components/Icons";
+import { language, t } from "~/i18n";
 
 export default function Login() {
   const login = useOAuthLogin();
 
   return (
     <main>
-      <Title>Sign In</Title>
-      <h1>Sign in</h1>
+      <Title>{t("login.title")}</Title>
+      <h1>{t("login.heading")}</h1>
       <div class="space-y-6 font-medium">
         <PasswordLogin />
         <div class="flex items-center w-full text-xs">
           <span class="flex-grow bg-gray-300 h-[1px]" />
-          <span class="flex-grow-0 mx-2 text-gray-500">Or continue with</span>
+          <span class="flex-grow-0 mx-2 text-gray-500">{t("login.orContinueWith")}</span>
           <span class="flex-grow bg-gray-300 h-[1px]" />
         </div>
         <a
@@ -25,7 +26,7 @@ export default function Login() {
           class="group w-full px-3 py-2 bg-white border border-gray-200 rounded-lg hover:bg-[#5865F2] hover:border-gray-300 focus:outline-none transition-colors duration-300 flex items-center justify-center gap-2.5 text-gray-700 hover:text-white"
         >
           <Discord class="h-5 fill-[#5865F2] group-hover:fill-white duration-300" />
-          Sign in with Discord
+          {t("login.signInWithDiscord")}
         </a>
       </div>
     </main>
@@ -37,8 +38,9 @@ function PasswordLogin() {
 
   return (
     <form action={formLogin} method="post" class="space-y-4 space-x-12">
+      <input type="hidden" name="lang" value={language()} />
       <label for="email" class="block text-left w-full">
-        Email
+        {t("login.email")}
         <input
           id="email"
           name="email"
@@ -50,7 +52,7 @@ function PasswordLogin() {
         />
       </label>
       <label for="password" class="block text-left w-full">
-        Password
+        {t("login.password")}
         <input
           id="password"
           name="password"
@@ -67,7 +69,7 @@ function PasswordLogin() {
         disabled={submission.pending}
         class="w-full px-4 py-2 bg-gradient-to-r from-sky-600 to-blue-600 text-white rounded-lg hover:from-sky-700 hover:to-blue-700 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-300 shadow-lg shadow-sky-500/25"
       >
-        Submit
+        {t("login.submit")}
       </button>
       <Show when={submission.error} keyed>
         {({ message }) => <p class="text-red-600 mt-2 text-xs text-center">{message}</p>}

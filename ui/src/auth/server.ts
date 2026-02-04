@@ -2,6 +2,8 @@ import { redirect } from "@solidjs/router";
 import { useSession } from "vinxi/http";
 import { getRandomValues, subtle, timingSafeEqual } from "crypto";
 import { createUser, findUser } from "./db";
+import type { Language } from "~/i18n";
+import { getTranslations } from "~/i18n";
 
 export interface Session {
   id: number;
@@ -43,10 +45,15 @@ async function createHash(password: string) {
   return `${saltHex}:${hash}`;
 }
 
-async function checkPassword(storedPassword: string, providedPassword: string) {
+async function checkPassword(
+  storedPassword: string,
+  providedPassword: string,
+  lang: Language,
+) {
+  const translations = getTranslations(lang);
   const [storedSalt, storedHash] = storedPassword.split(":");
   if (!storedSalt || !storedHash)
-    throw new Error("Invalid stored password format");
+    throw new Error(translations["errors.invalidStoredPasswordFormat"]);
   const key = await subtle.deriveBits(
     {
       name: "PBKDF2",
@@ -66,20 +73,22 @@ async function checkPassword(storedPassword: string, providedPassword: string) {
   const hash = Buffer.from(key);
   const stored = Buffer.from(storedHash, "hex");
   if (stored.length !== hash.length || !timingSafeEqual(stored, hash))
-    throw new Error("Invalid email or password");
+    throw new Error(translations["errors.invalidEmailOrPassword"]);
 }
 
-export async function passwordLogin(email: string, password: string) {
+export async function passwordLogin(
+  email: string,
+  password: string,
+  lang: Language = "en",
+) {
+  const translations = getTranslations(lang);
   let user = await findUser({ email });
   if (!user)
     user = await createUser({
       email,
       password: await createHash(password),
     });
-  else if (!user.password)
-    throw new Error(
-      "Account exists via OAuth. Sign in with your OAuth provider",
-    );
-  else await checkPassword(user.password, password);
+  else if (!user.password) throw new Error(translations["errors.oauthOnly"]);
+  else await checkPassword(user.password, password, lang);
   return createSession(user);
 }

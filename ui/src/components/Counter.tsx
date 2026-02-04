@@ -1,4 +1,5 @@
 import { createSignal } from "solid-js";
+import { t } from "~/i18n";
 
 export default function Counter() {
   const [count, setCount] = createSignal(0);
@@ -8,7 +9,7 @@ export default function Counter() {
       class="w-52 rounded-full bg-gray-100 border-2 border-gray-300 focus:border-gray-400 py-4"
       onclick={() => setCount(prev => prev + 1)}
     >
-      Clicks: {count()}
+      {t("counter.clicks")}: {count()}
     </button>
   );
 }
