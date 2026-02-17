@@ -20,6 +20,7 @@ public class Program
         var resolvedConnectionString = sqliteConnectionStringBuilder.ToString();
 
         builder.Services.AddScoped(_ => new SqliteConnection(resolvedConnectionString));
+        builder.Services.AddScoped<LokService>();
 
         builder.Services.AddOpenApi();
 
@@ -28,6 +29,21 @@ public class Program
         using (var connection = new SqliteConnection(resolvedConnectionString))
         {
             connection.Open();
+
+            var initScriptPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "../Database/init.sql"));
+
+            if (File.Exists(initScriptPath))
+            {
+                var initSql = File.ReadAllText(initScriptPath);
+                if (!string.IsNullOrWhiteSpace(initSql))
+                {
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = initSql;
+                        command.ExecuteNonQuery();
+                    }
+                }
+            }
         }
 
         if (app.Environment.IsDevelopment())
@@ -37,7 +53,8 @@ public class Program
 
         app.UseHttpsRedirection();
 
-        PublicEndpoints.MapPublicEndpoints(app);
+        SystemEndpoints.MapSystemEndpoints(app);
+        LokEndpoints.MapLokEndpoints(app);
 
         app.Run();
     }

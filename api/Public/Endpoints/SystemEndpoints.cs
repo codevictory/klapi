@@ -1,8 +1,8 @@
 using Microsoft.Data.Sqlite;
 
-public static class PublicEndpoints
+public static class SystemEndpoints
 {
-  public static void MapPublicEndpoints(WebApplication app)
+  public static void MapSystemEndpoints(WebApplication app)
   {
     app.MapGet("/", () =>
     {
