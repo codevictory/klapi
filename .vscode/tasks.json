@@ -2,10 +2,10 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "build Public API",
+      "label": "build App API",
       "type": "process",
       "command": "dotnet",
-      "args": ["build", "${workspaceFolder}/api/Public/Public.csproj"],
+      "args": ["build", "${workspaceFolder}/api/Public/App.csproj"],
       "problemMatcher": "$msCompile",
       "group": {
         "kind": "build",

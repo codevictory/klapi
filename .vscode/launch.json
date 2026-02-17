@@ -5,11 +5,11 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "C#: Debug Public API",
+      "name": "C#: Debug App API",
       "type": "coreclr",
       "request": "launch",
-      "preLaunchTask": "build Public API",
-      "program": "${workspaceFolder}/api/Public/bin/Debug/net10.0/Public.dll",
+      "preLaunchTask": "build App API",
+      "program": "${workspaceFolder}/api/Public/bin/Debug/net10.0/App.dll",
       "args": [],
       "cwd": "${workspaceFolder}/api/Public",
       "stopAtEntry": false,
