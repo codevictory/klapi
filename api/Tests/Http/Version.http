@@ -2,5 +2,3 @@
 
 GET {{Public_HostAddress}}/
 Accept: application/json
-
-###
