@@ -10,7 +10,7 @@ public class LokService
     _connection = connection;
   }
 
-  public async Task<LokOpenHours?> GetOpenHoursAsync()
+  public async Task<List<LokOpenHours>> GetOpenHours()
   {
     if (_connection.State != ConnectionState.Open)
     {
@@ -19,24 +19,72 @@ public class LokService
 
     await using var command = _connection.CreateCommand();
     command.CommandText = @"
-      SELECT paragraph1, paragraph2, paragraph3, paragraph4, kitchenNotice
+      SELECT version, paragraph1, paragraph2, paragraph3, paragraph4, kitchenNotice
       FROM LokOpenHours
-      LIMIT 1";
+      ORDER BY datetime(version) DESC, id DESC
+      LIMIT 5";
 
     await using var reader = await command.ExecuteReaderAsync();
 
-    if (!await reader.ReadAsync())
+    var openHoursList = new List<LokOpenHours>();
+
+    while (await reader.ReadAsync())
     {
-      return null;
+      openHoursList.Add(new LokOpenHours
+      {
+        Version = ParseVersion(reader["version"]?.ToString()),
+        Paragraph1 = reader["paragraph1"]?.ToString() ?? string.Empty,
+        Paragraph2 = reader["paragraph2"]?.ToString() ?? string.Empty,
+        Paragraph3 = reader["paragraph3"]?.ToString() ?? string.Empty,
+        Paragraph4 = reader["paragraph4"]?.ToString() ?? string.Empty,
+        KitchenNotice = reader["kitchenNotice"]?.ToString() ?? string.Empty
+      });
     }
+
+    return openHoursList;
+  }
+
+  public async Task<LokOpenHours> InsertOpenHours(LokOpenHours openHours)
+  {
+    if (_connection.State != ConnectionState.Open)
+    {
+      await _connection.OpenAsync();
+    }
+
+    var version = DateTime.UtcNow;
+
+    await using var command = _connection.CreateCommand();
+    command.CommandText = @"
+      INSERT INTO LokOpenHours (version, paragraph1, paragraph2, paragraph3, paragraph4, kitchenNotice)
+      VALUES (@version, @paragraph1, @paragraph2, @paragraph3, @paragraph4, @kitchenNotice);";
+
+    command.Parameters.AddWithValue("@version", version.ToString("O"));
+    command.Parameters.AddWithValue("@paragraph1", openHours.Paragraph1 ?? string.Empty);
+    command.Parameters.AddWithValue("@paragraph2", openHours.Paragraph2 ?? string.Empty);
+    command.Parameters.AddWithValue("@paragraph3", openHours.Paragraph3 ?? string.Empty);
+    command.Parameters.AddWithValue("@paragraph4", openHours.Paragraph4 ?? string.Empty);
+    command.Parameters.AddWithValue("@kitchenNotice", openHours.KitchenNotice ?? string.Empty);
+
+    await command.ExecuteNonQueryAsync();
 
     return new LokOpenHours
     {
-      Paragraph1 = reader["paragraph1"]?.ToString() ?? string.Empty,
-      Paragraph2 = reader["paragraph2"]?.ToString() ?? string.Empty,
-      Paragraph3 = reader["paragraph3"]?.ToString() ?? string.Empty,
-      Paragraph4 = reader["paragraph4"]?.ToString() ?? string.Empty,
-      KitchenNotice = reader["kitchenNotice"]?.ToString() ?? string.Empty
+      Version = version,
+      Paragraph1 = openHours.Paragraph1 ?? string.Empty,
+      Paragraph2 = openHours.Paragraph2 ?? string.Empty,
+      Paragraph3 = openHours.Paragraph3 ?? string.Empty,
+      Paragraph4 = openHours.Paragraph4 ?? string.Empty,
+      KitchenNotice = openHours.KitchenNotice ?? string.Empty
     };
+  }
+
+  private static DateTime ParseVersion(string? value)
+  {
+    if (!string.IsNullOrWhiteSpace(value) && DateTime.TryParse(value, out var parsed))
+    {
+      return parsed;
+    }
+
+    return DateTime.MinValue;
   }
 }

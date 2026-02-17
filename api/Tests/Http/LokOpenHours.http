@@ -1,0 +1,135 @@
+@App_HostAddress = http://localhost:5013
+
+### Get newest open hours (returns latest 5)
+GET {{App_HostAddress}}/lok/open-hours
+Accept: application/json
+
+### Insert open hours version 1
+POST {{App_HostAddress}}/lok/open-hours
+Content-Type: application/json
+Accept: application/json
+
+{
+  "paragraph1": "Version 1 paragraph 1",
+  "paragraph2": "Version 1 paragraph 2",
+  "paragraph3": "Version 1 paragraph 3",
+  "paragraph4": "Version 1 paragraph 4",
+  "kitchenNotice": "Kitchen notice 1"
+}
+
+### Insert open hours version 2
+POST {{App_HostAddress}}/lok/open-hours
+Content-Type: application/json
+Accept: application/json
+
+{
+  "paragraph1": "Version 2 paragraph 1",
+  "paragraph2": "Version 2 paragraph 2",
+  "paragraph3": "Version 2 paragraph 3",
+  "paragraph4": "Version 2 paragraph 4",
+  "kitchenNotice": "Kitchen notice 2"
+}
+
+### Insert open hours version 3
+POST {{App_HostAddress}}/lok/open-hours
+Content-Type: application/json
+Accept: application/json
+
+{
+  "paragraph1": "Version 3 paragraph 1",
+  "paragraph2": "Version 3 paragraph 2",
+  "paragraph3": "Version 3 paragraph 3",
+  "paragraph4": "Version 3 paragraph 4",
+  "kitchenNotice": "Kitchen notice 3"
+}
+
+### Insert open hours version 4
+POST {{App_HostAddress}}/lok/open-hours
+Content-Type: application/json
+Accept: application/json
+
+{
+  "paragraph1": "Version 4 paragraph 1",
+  "paragraph2": "Version 4 paragraph 2",
+  "paragraph3": "Version 4 paragraph 3",
+  "paragraph4": "Version 4 paragraph 4",
+  "kitchenNotice": "Kitchen notice 4"
+}
+
+### Insert open hours version 5
+POST {{App_HostAddress}}/lok/open-hours
+Content-Type: application/json
+Accept: application/json
+
+{
+  "paragraph1": "Version 5 paragraph 1",
+  "paragraph2": "Version 5 paragraph 2",
+  "paragraph3": "Version 5 paragraph 3",
+  "paragraph4": "Version 5 paragraph 4",
+  "kitchenNotice": "Kitchen notice 5"
+}
+
+### Insert open hours version 6
+POST {{App_HostAddress}}/lok/open-hours
+Content-Type: application/json
+Accept: application/json
+
+{
+  "paragraph1": "Version 6 paragraph 1",
+  "paragraph2": "Version 6 paragraph 2",
+  "paragraph3": "Version 6 paragraph 3",
+  "paragraph4": "Version 6 paragraph 4",
+  "kitchenNotice": "Kitchen notice 6"
+}
+
+### Insert open hours version 7
+POST {{App_HostAddress}}/lok/open-hours
+Content-Type: application/json
+Accept: application/json
+
+{
+  "paragraph1": "Version 7 paragraph 1",
+  "paragraph2": "Version 7 paragraph 2",
+  "paragraph3": "Version 7 paragraph 3",
+  "paragraph4": "Version 7 paragraph 4",
+  "kitchenNotice": "Kitchen notice 7"
+}
+
+### Insert open hours version 8
+POST {{App_HostAddress}}/lok/open-hours
+Content-Type: application/json
+Accept: application/json
+
+{
+  "paragraph1": "Version 8 paragraph 1",
+  "paragraph2": "Version 8 paragraph 2",
+  "paragraph3": "Version 8 paragraph 3",
+  "paragraph4": "Version 8 paragraph 4",
+  "kitchenNotice": "Kitchen notice 8"
+}
+
+### Insert open hours version 9
+POST {{App_HostAddress}}/lok/open-hours
+Content-Type: application/json
+Accept: application/json
+
+{
+  "paragraph1": "Version 9 paragraph 1",
+  "paragraph2": "Version 9 paragraph 2",
+  "paragraph3": "Version 9 paragraph 3",
+  "paragraph4": "Version 9 paragraph 4",
+  "kitchenNotice": "Kitchen notice 9"
+}
+
+### Insert open hours version 10
+POST {{App_HostAddress}}/lok/open-hours
+Content-Type: application/json
+Accept: application/json
+
+{
+  "paragraph1": "Version 10 paragraph 1",
+  "paragraph2": "Version 10 paragraph 2",
+  "paragraph3": "Version 10 paragraph 3",
+  "paragraph4": "Version 10 paragraph 4",
+  "kitchenNotice": "Kitchen notice 10"
+}

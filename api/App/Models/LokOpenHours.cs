@@ -1,5 +1,7 @@
 public class LokOpenHours
 {
+  public DateTime Version { get; set; }
+
   public string Paragraph1 { get; set; } = string.Empty;
 
   public string Paragraph2 { get; set; } = string.Empty;

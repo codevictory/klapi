@@ -44,6 +44,18 @@ public class Program
                     }
                 }
             }
+
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('LokOpenHours') WHERE name = 'version';";
+                var hasVersionColumn = Convert.ToInt32(command.ExecuteScalar()) > 0;
+
+                if (!hasVersionColumn)
+                {
+                    command.CommandText = "ALTER TABLE LokOpenHours ADD COLUMN version TEXT NOT NULL DEFAULT '';";
+                    command.ExecuteNonQuery();
+                }
+            }
         }
 
         if (app.Environment.IsDevelopment())
