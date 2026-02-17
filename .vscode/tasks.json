@@ -5,7 +5,7 @@
       "label": "build App API",
       "type": "process",
       "command": "dotnet",
-      "args": ["build", "${workspaceFolder}/api/Public/App.csproj"],
+      "args": ["build", "${workspaceFolder}/api/App/App.csproj"],
       "problemMatcher": "$msCompile",
       "group": {
         "kind": "build",

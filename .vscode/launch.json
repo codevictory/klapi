@@ -9,9 +9,9 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build App API",
-      "program": "${workspaceFolder}/api/Public/bin/Debug/net10.0/App.dll",
+      "program": "${workspaceFolder}/api/App/bin/Debug/net10.0/App.dll",
       "args": [],
-      "cwd": "${workspaceFolder}/api/Public",
+      "cwd": "${workspaceFolder}/api/App",
       "stopAtEntry": false,
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development"

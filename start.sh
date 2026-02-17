@@ -34,7 +34,7 @@ ensure_app_window() {
 start_or_restart_services() {
 	ensure_app_window
 	tmux respawn-pane -k -t "$SESSION_NAME":app.0 -c "$UI_DIR" "bun dev"
-	tmux respawn-pane -k -t "$SESSION_NAME":app.1 -c "$API_DIR" "dotnet run --project $API_DIR/Public/App.csproj"
+	tmux respawn-pane -k -t "$SESSION_NAME":app.1 -c "$API_DIR" "dotnet run --project $API_DIR/App/App.csproj"
 	tmux select-pane -t "$SESSION_NAME":app.0
 	tmux select-window -t "$SESSION_NAME":app
 }
