@@ -10,7 +10,6 @@ export default function Home() {
       <Title>{t("home.title")}</Title>
       <h1 class="text-center">{t("home.heading")}</h1>
       <img src="/favicon.svg" alt={t("home.logoAlt")} class="w-28" />
-      {t("home.signedInAs")} <b class="font-medium">{session()?.email}</b>
     </main>
   );
 }

@@ -4,7 +4,7 @@ import { useAuth } from "~/components/Context";
 import { language, setLanguage, t } from "~/i18n";
 
 export default function Nav() {
-  const { signedIn, logout } = useAuth();
+  const { session, signedIn, logout } = useAuth();
   const isHome = useMatch(() => "/");
   const isAbout = useMatch(() => "/about");
 
@@ -25,6 +25,7 @@ export default function Nav() {
         {t("nav.about")}
       </a>
       <div class="ml-auto flex items-center gap-2">
+        <b class="font-large text-[#F5D1A9]">{session()?.email}</b>
         <div class="flex items-center gap-1 rounded-md border border-[#8E4F24] bg-[#8E4F24]/45 p-1">
           <button
             type="button"

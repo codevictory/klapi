@@ -1,5 +1,3 @@
-using Microsoft.Data.Sqlite;
-
 public static class SystemEndpoints
 {
   public static void MapSystemEndpoints(WebApplication app)
