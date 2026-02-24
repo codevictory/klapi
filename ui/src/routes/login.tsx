@@ -3,7 +3,6 @@ import { useSubmission } from "@solidjs/router";
 import { Show } from "solid-js";
 import { useOAuthLogin } from "start-oauth";
 import { formLogin } from "~/auth";
-import { Discord } from "~/components/Icons";
 import { language, t } from "~/i18n";
 
 export default function Login() {
@@ -15,19 +14,6 @@ export default function Login() {
       <h1>{t("login.heading")}</h1>
       <div class="space-y-6 font-medium">
         <PasswordLogin />
-        <div class="flex items-center w-full text-xs">
-          <span class="flex-grow bg-gray-300 h-[1px]" />
-          <span class="flex-grow-0 mx-2 text-gray-500">{t("login.orContinueWith")}</span>
-          <span class="flex-grow bg-gray-300 h-[1px]" />
-        </div>
-        <a
-          href={login("discord")}
-          rel="external"
-          class="group w-full px-3 py-2 bg-white border border-gray-200 rounded-lg hover:bg-[#5865F2] hover:border-gray-300 focus:outline-none transition-colors duration-300 flex items-center justify-center gap-2.5 text-gray-700 hover:text-white"
-        >
-          <Discord class="h-5 fill-[#5865F2] group-hover:fill-white duration-300" />
-          {t("login.signInWithDiscord")}
-        </a>
       </div>
     </main>
   );
