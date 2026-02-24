@@ -55,6 +55,15 @@ public class Program
                     command.CommandText = "ALTER TABLE LokOpenHours ADD COLUMN version TEXT NOT NULL DEFAULT '';";
                     command.ExecuteNonQuery();
                 }
+
+                command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('LokOpenHours') WHERE name = 'name';";
+                var hasNameColumn = Convert.ToInt32(command.ExecuteScalar()) > 0;
+
+                if (!hasNameColumn)
+                {
+                    command.CommandText = "ALTER TABLE LokOpenHours ADD COLUMN name TEXT NOT NULL DEFAULT '';";
+                    command.ExecuteNonQuery();
+                }
             }
         }
 
