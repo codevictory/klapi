@@ -9,7 +9,7 @@ export default function NotFound() {
       {t("notFound.message")}
       <a
         href="/"
-        class="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-100 transition-colors duration-200"
+        class="px-4 py-2 border border-[#C99763] rounded-xl text-[#70421E] hover:bg-[#F5D1A9] transition-colors duration-200"
       >
         {t("notFound.goHome")}
       </a>

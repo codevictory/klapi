@@ -10,7 +10,7 @@ export default function About() {
   return (
     <main>
       <Title>{t("about.title")}</Title>
-      <p class="text-gray-700 text-center">
+      <p class="text-[#70421E] text-center">
         {t("about.apiVersion")}:
         <Show when={apiVersion()} fallback={t("about.loading")}>
           {apiVersion()}

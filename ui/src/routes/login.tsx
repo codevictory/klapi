@@ -34,7 +34,7 @@ function PasswordLogin() {
           autocomplete="email"
           placeholder="john@doe.com"
           required
-          class="bg-white mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+          class="bg-[#FFF7EE] mt-1 block w-full px-4 py-2 border border-[#C99763] rounded-md focus:outline-none focus:ring-2 focus:ring-[#A56C38]"
         />
       </label>
       <label for="password" class="block text-left w-full">
@@ -47,18 +47,18 @@ function PasswordLogin() {
           placeholder="••••••••"
           minLength={6}
           required
-          class="bg-white mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+          class="bg-[#FFF7EE] mt-1 block w-full px-4 py-2 border border-[#C99763] rounded-md focus:outline-none focus:ring-2 focus:ring-[#A56C38]"
         />
       </label>
       <button
         type="submit"
         disabled={submission.pending}
-        class="w-full px-4 py-2 bg-gradient-to-r from-sky-600 to-blue-600 text-white rounded-lg hover:from-sky-700 hover:to-blue-700 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-300 shadow-lg shadow-sky-500/25"
+        class="w-full px-4 py-2 bg-gradient-to-r from-[#A56C38] to-[#70421E] text-[#FFF7EE] rounded-lg hover:from-[#8E4F24] hover:to-[#4C250E] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-300 shadow-lg shadow-[#70421E]/30"
       >
         {t("login.submit")}
       </button>
       <Show when={submission.error} keyed>
-        {({ message }) => <p class="text-red-600 mt-2 text-xs text-center">{message}</p>}
+        {({ message }) => <p class="text-[#8E4F24] mt-2 text-xs text-center">{message}</p>}
       </Show>
     </form>
   );

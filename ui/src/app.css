@@ -1,15 +1,20 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
+
+:root {
+  font-family: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
+}
 
 #app {
   user-select: none;
 }
 
 main {
-  @apply flex flex-col items-center justify-center min-h-screen bg-gray-50 gap-8 px-4;
+  @apply flex flex-col items-center justify-center min-h-screen bg-[#EED5B8] text-[#4C250E] gap-8 px-4;
 }
 
 h1 {
-  @apply uppercase text-6xl text-sky-700 font-thin;
+  @apply uppercase text-6xl text-[#8E4F24] font-thin;
 }
 
 button {
