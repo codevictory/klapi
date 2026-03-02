@@ -1,5 +1,12 @@
 import { buildApiUrl } from "./url";
 
+type AuthTokenResponse = {
+  accessToken: string;
+  email: string;
+  tokenType: string;
+  expiresIn: number;
+};
+
 async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(buildApiUrl(path), {
     ...init,
@@ -19,6 +26,14 @@ async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   return (await response.json()) as T;
+}
+
+function getAccessToken() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return localStorage.getItem("session-token") ?? "";
 }
 
 export type LokOpenHours = {
@@ -74,6 +89,9 @@ export async function createLokOpenHours(
 
   return await fetchApi<LokOpenHours>("/lok/open-hours", {
     method: "POST",
+    headers: {
+      Authorization: `Bearer ${getAccessToken()}`,
+    },
     body: JSON.stringify(payload),
   });
 }
@@ -106,6 +124,9 @@ export async function updateLokOpenHours(
 
   return await fetchApi<LokOpenHours>(`/lok/open-hours/${id}`, {
     method: "PUT",
+    headers: {
+      Authorization: `Bearer ${getAccessToken()}`,
+    },
     body: JSON.stringify(payload),
   });
 }
@@ -117,6 +138,9 @@ export async function deleteLokOpenHours(id: number): Promise<void> {
 
   await fetchApi<void>(`/lok/open-hours/${id}`, {
     method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${getAccessToken()}`,
+    },
   });
 }
 
@@ -131,6 +155,22 @@ export async function setActiveLokOpenHours(
     `/lok/open-hours/${id}/active`,
     {
       method: "PUT",
+      headers: {
+        Authorization: `Bearer ${getAccessToken()}`,
+      },
     },
   );
+}
+
+export async function requestAuthToken(
+  email: string,
+  password: string,
+): Promise<AuthTokenResponse> {
+  return await fetchApi<AuthTokenResponse>("/auth/token", {
+    method: "POST",
+    body: JSON.stringify({
+      email,
+      password,
+    }),
+  });
 }

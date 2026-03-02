@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRecoilState } from "recoil";
+import { requestAuthToken } from "~/api";
 import { useT } from "~/i18n";
 import { sessionAtom } from "~/state/appState";
 
@@ -21,7 +22,7 @@ export default function Login() {
     navigate("/");
   }, [session, navigate]);
 
-  const submit = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
 
     if (!email.trim() || !password.trim()) {
@@ -30,9 +31,22 @@ export default function Login() {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    setSession({ email: normalizedEmail });
-    localStorage.setItem("session-email", normalizedEmail);
-    navigate("/");
+
+    try {
+      const auth = await requestAuthToken(normalizedEmail, password);
+
+      setSession({
+        email: auth.email,
+        token: auth.accessToken,
+      });
+
+      localStorage.setItem("session-email", auth.email);
+      localStorage.setItem("session-token", auth.accessToken);
+      setError("");
+      navigate("/");
+    } catch {
+      setError(t("errors.invalidEmailOrPassword"));
+    }
   };
 
   return (

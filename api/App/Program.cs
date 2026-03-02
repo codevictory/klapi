@@ -1,4 +1,7 @@
 using Microsoft.Data.Sqlite;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 public class Program
 {
@@ -19,20 +22,65 @@ public class Program
         sqliteConnectionStringBuilder.DataSource = databasePath;
         var resolvedConnectionString = sqliteConnectionStringBuilder.ToString();
 
+        var authOptions = builder.Configuration.GetSection("Auth").Get<AuthOptions>()
+            ?? throw new InvalidOperationException("Auth configuration was not found.");
+
+        if (string.IsNullOrWhiteSpace(authOptions.SigningKey) || authOptions.SigningKey.Length < 32)
+        {
+            throw new InvalidOperationException("Auth:SigningKey must be at least 32 characters long.");
+        }
+
+        if (authOptions.Users.Count == 0)
+        {
+            throw new InvalidOperationException("At least one user must be configured under Auth:Users.");
+        }
+
+        builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection("Auth"));
+
         builder.Services.AddScoped(_ => new SqliteConnection(resolvedConnectionString));
         builder.Services.AddScoped<LokService>();
         builder.Services.AddCors(options =>
         {
-            options.AddPolicy("UiCors", policy =>
+            options.AddPolicy("PublicReadCors", policy =>
             {
                 policy
-                    .WithOrigins(
-                        "http://localhost:5173",
-                        "http://127.0.0.1:5173",
-                        "http://localhost:4173",
-                        "http://127.0.0.1:4173")
+                    .AllowAnyOrigin()
                     .AllowAnyHeader()
                     .AllowAnyMethod();
+            });
+
+            options.AddPolicy("FrontendWriteCors", policy =>
+            {
+                policy
+                    .WithOrigins(authOptions.AllowedOrigins.ToArray())
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+            });
+        });
+
+        builder.Services
+            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidateLifetime = true,
+                    ValidIssuer = authOptions.Issuer,
+                    ValidAudience = authOptions.Audience,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(authOptions.SigningKey)),
+                    ClockSkew = TimeSpan.FromMinutes(1)
+                };
+            });
+
+        builder.Services.AddAuthorization(options =>
+        {
+            options.AddPolicy("OpenHoursWrite", policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireClaim("scope", "openhours:write");
             });
         });
 
@@ -137,7 +185,10 @@ public class Program
             app.MapOpenApi();
         }
 
-        app.UseCors("UiCors");
+        app.UseCors();
+
+        app.UseAuthentication();
+        app.UseAuthorization();
 
         if (!app.Environment.IsDevelopment())
         {
@@ -145,6 +196,7 @@ public class Program
         }
 
         SystemEndpoints.MapSystemEndpoints(app);
+        AuthEndpoints.MapAuthEndpoints(app);
         LokEndpoints.MapLokEndpoints(app);
 
         app.Run();

@@ -21,12 +21,16 @@ function AppShell() {
 
   useEffect(() => {
     const storedEmail = localStorage.getItem("session-email");
-    if (!storedEmail) {
+    const storedToken = localStorage.getItem("session-token");
+    if (!storedEmail || !storedToken) {
       setSession(null);
       return;
     }
 
-    setSession({ email: storedEmail });
+    setSession({
+      email: storedEmail,
+      token: storedToken,
+    });
   }, [setSession]);
 
   useEffect(() => {

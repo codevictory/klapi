@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
@@ -37,6 +38,32 @@ public class ApiEndpointsTests(ApiTestFactory factory) : IClassFixture<ApiTestFa
   [Fact]
   public async Task OpenHours_Crud_Works()
   {
+    var unauthorizedCreateResponse = await _client.PostAsJsonAsync("/lok/open-hours", new
+    {
+      id = 0,
+      name = "unauthorized",
+      version = DateTime.UtcNow.ToString("O"),
+      paragraph1 = "p1",
+      paragraph2 = "p2",
+      paragraph3 = "p3",
+      paragraph4 = "p4",
+      kitchenNotice = "k1"
+    });
+    Assert.Equal(HttpStatusCode.Unauthorized, unauthorizedCreateResponse.StatusCode);
+
+    var tokenResponse = await _client.PostAsJsonAsync("/auth/token", new
+    {
+      email = "admin@klapi.local",
+      password = "changeme"
+    });
+
+    Assert.Equal(HttpStatusCode.OK, tokenResponse.StatusCode);
+    var auth = await tokenResponse.Content.ReadFromJsonAsync<AuthTokenDto>();
+    Assert.NotNull(auth);
+    Assert.False(string.IsNullOrWhiteSpace(auth.AccessToken));
+
+    _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.AccessToken);
+
     var createPayload = new
     {
       id = 0,
@@ -188,4 +215,15 @@ public class LokOpenHoursDto
   public string Paragraph4 { get; set; } = string.Empty;
 
   public string KitchenNotice { get; set; } = string.Empty;
+}
+
+public class AuthTokenDto
+{
+  public string AccessToken { get; set; } = string.Empty;
+
+  public string Email { get; set; } = string.Empty;
+
+  public string TokenType { get; set; } = string.Empty;
+
+  public int ExpiresIn { get; set; }
 }

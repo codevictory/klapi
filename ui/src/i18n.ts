@@ -55,6 +55,7 @@ const translations = {
     "notFound.goHome": "Go Home",
     "error.title": "Error",
     "errors.requiredEmailPassword": "Email and password are required",
+    "errors.invalidEmailOrPassword": "Invalid email or password",
   },
   fi: {
     "nav.home": "Etusivu",
@@ -106,6 +107,7 @@ const translations = {
     "notFound.goHome": "Takaisin etusivulle",
     "error.title": "Virhe",
     "errors.requiredEmailPassword": "Sähköposti ja salasana vaaditaan",
+    "errors.invalidEmailOrPassword": "Virheellinen sähköposti tai salasana",
   },
 } as const;
 

@@ -5,6 +5,7 @@ export type Language = "fi" | "en";
 
 export type Session = {
   email: string;
+  token: string;
 };
 
 export type Toast = {

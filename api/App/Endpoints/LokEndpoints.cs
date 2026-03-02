@@ -32,6 +32,8 @@ public static class LokEndpoints
       httpContext.Response.Headers.Location = "/lok/open-hours";
       await httpContext.Response.WriteAsJsonAsync(createdOpenHours);
     })
+    .RequireAuthorization("OpenHoursWrite")
+    .RequireCors("FrontendWriteCors")
     .WithName("CreateLokOpenHours");
 
     app.MapGet("/lok/open-hours", async (HttpContext httpContext) =>
@@ -51,6 +53,7 @@ public static class LokEndpoints
 
       await httpContext.Response.WriteAsJsonAsync(openHours);
     })
+    .RequireCors("PublicReadCors")
     .WithName("GetLokOpenHours");
 
     app.MapDelete("/lok/open-hours/{id:long}", async (HttpContext httpContext, long id) =>
@@ -70,6 +73,8 @@ public static class LokEndpoints
 
       httpContext.Response.StatusCode = StatusCodes.Status204NoContent;
     })
+    .RequireAuthorization("OpenHoursWrite")
+    .RequireCors("FrontendWriteCors")
     .WithName("DeleteLokOpenHours");
 
     app.MapPut("/lok/open-hours/{id:long}", async (HttpContext httpContext, long id) =>
@@ -111,6 +116,8 @@ public static class LokEndpoints
 
       await httpContext.Response.WriteAsJsonAsync(updatedOpenHours);
     })
+    .RequireAuthorization("OpenHoursWrite")
+    .RequireCors("FrontendWriteCors")
     .WithName("UpdateLokOpenHours");
 
     app.MapPut("/lok/open-hours/{id:long}/active", async (HttpContext httpContext, long id) =>
@@ -134,6 +141,8 @@ public static class LokEndpoints
         IsActive = true
       });
     })
+    .RequireAuthorization("OpenHoursWrite")
+    .RequireCors("FrontendWriteCors")
     .WithName("SetActiveLokOpenHours");
   }
 }

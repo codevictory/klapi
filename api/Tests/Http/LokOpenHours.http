@@ -1,5 +1,15 @@
 @App_HostAddress = http://localhost:5013
 
+### Request token for protected open-hours endpoints
+POST {{App_HostAddress}}/auth/token
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "admin@klapi.local",
+  "password": "changeme"
+}
+
 ### Get newest open hours (returns latest 5)
 GET {{App_HostAddress}}/lok/open-hours
 Accept: application/json
@@ -10,6 +20,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
+  "name": "Version 1",
   "paragraph1": "Version 1 paragraph 1",
   "paragraph2": "Version 1 paragraph 2",
   "paragraph3": "Version 1 paragraph 3",
@@ -23,6 +34,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
+  "name": "Version 2",
   "paragraph1": "Version 2 paragraph 1",
   "paragraph2": "Version 2 paragraph 2",
   "paragraph3": "Version 2 paragraph 3",
@@ -36,6 +48,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
+  "name": "Version 3",
   "paragraph1": "Version 3 paragraph 1",
   "paragraph2": "Version 3 paragraph 2",
   "paragraph3": "Version 3 paragraph 3",

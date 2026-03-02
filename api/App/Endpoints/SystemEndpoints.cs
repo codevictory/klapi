@@ -9,6 +9,7 @@ public static class SystemEndpoints
         Version = "1.0.0"
       };
     })
+    .RequireCors("PublicReadCors")
     .WithName("GetVersion");
 
     app.MapGet("/health/db", async (Microsoft.Data.Sqlite.SqliteConnection connection) =>
@@ -24,6 +25,7 @@ public static class SystemEndpoints
         Result = result
       };
     })
+    .RequireCors("PublicReadCors")
     .WithName("GetDatabaseHealth");
   }
 }

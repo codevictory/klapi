@@ -13,6 +13,7 @@ export default function Nav() {
   const signOut = () => {
     setSession(null);
     localStorage.removeItem("session-email");
+    localStorage.removeItem("session-token");
     navigate("/login");
   };
 
@@ -34,8 +35,8 @@ export default function Nav() {
             type="button"
             onClick={() => setLanguage("fi")}
             className={`rounded px-2 py-1 text-xs ${language === "fi"
-                ? "bg-[#E3A977] text-[#4C250E]"
-                : "text-[#F5D1A9] hover:text-[#FFF7EE]"
+              ? "bg-[#E3A977] text-[#4C250E]"
+              : "text-[#F5D1A9] hover:text-[#FFF7EE]"
               }`}
           >
             {t("nav.language.fi")}
@@ -44,8 +45,8 @@ export default function Nav() {
             type="button"
             onClick={() => setLanguage("en")}
             className={`rounded px-2 py-1 text-xs ${language === "en"
-                ? "bg-[#E3A977] text-[#4C250E]"
-                : "text-[#F5D1A9] hover:text-[#FFF7EE]"
+              ? "bg-[#E3A977] text-[#4C250E]"
+              : "text-[#F5D1A9] hover:text-[#FFF7EE]"
               }`}
           >
             {t("nav.language.en")}
