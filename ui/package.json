@@ -4,7 +4,11 @@
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
-    "start": "vinxi start"
+    "start": "vinxi start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "biome lint src",
+    "lint:fix": "biome check --write src"
   },
   "dependencies": {
     "@solidjs/meta": "^0.29.4",
@@ -17,8 +21,10 @@
     "vinxi": "^0.5.8"
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
     "@tailwindcss/vite": "^4.1.13",
-    "tailwindcss": "^4.1.13"
+    "tailwindcss": "^4.1.13",
+    "vitest": "^2.1.9"
   },
   "engines": {
     "node": ">=22"

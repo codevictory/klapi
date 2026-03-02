@@ -22,6 +22,7 @@ export default function ErrorNotification() {
             <p class="text-[#70421E] mt-1 select-text">{msg}</p>
           </div>
           <button
+            type="button"
             onclick={() => setSearchParams({ error: "" })}
             class="text-[#A56C38] hover:text-[#4C250E] transition-colors"
           >

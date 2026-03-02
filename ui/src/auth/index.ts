@@ -9,7 +9,7 @@ const isProtected = (path: string) =>
   PROTECTED_ROUTES.some((route) =>
     route.endsWith("/*")
       ? path.startsWith(route.slice(0, -2))
-      : path === route || path.startsWith(route + "/"),
+      : path === route || path.startsWith(`${route}/`),
   );
 
 export const querySession = query(async (path: string) => {

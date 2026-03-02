@@ -1,3 +1,9 @@
 import { mount, StartClient } from "@solidjs/start/client";
 
-mount(() => <StartClient />, document.getElementById("app")!);
+const appRoot = document.getElementById("app");
+
+if (!appRoot) {
+  throw new Error("App root element '#app' not found");
+}
+
+mount(() => <StartClient />, appRoot);
