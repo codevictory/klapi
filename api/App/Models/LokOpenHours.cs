@@ -4,6 +4,8 @@ public class LokOpenHours
 
   public string Name { get; set; } = string.Empty;
 
+  public bool IsActive { get; set; }
+
   public DateTime Version { get; set; }
 
   public string Paragraph1 { get; set; } = string.Empty;

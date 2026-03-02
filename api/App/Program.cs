@@ -21,6 +21,20 @@ public class Program
 
         builder.Services.AddScoped(_ => new SqliteConnection(resolvedConnectionString));
         builder.Services.AddScoped<LokService>();
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("UiCors", policy =>
+            {
+                policy
+                    .WithOrigins(
+                        "http://localhost:5173",
+                        "http://127.0.0.1:5173",
+                        "http://localhost:4173",
+                        "http://127.0.0.1:4173")
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+            });
+        });
 
         builder.Services.AddOpenApi();
 
@@ -64,6 +78,57 @@ public class Program
                     command.CommandText = "ALTER TABLE LokOpenHours ADD COLUMN name TEXT NOT NULL DEFAULT '';";
                     command.ExecuteNonQuery();
                 }
+
+                command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('LokOpenHours') WHERE name = 'isActive';";
+                var hasIsActiveColumn = Convert.ToInt32(command.ExecuteScalar()) > 0;
+
+                if (!hasIsActiveColumn)
+                {
+                    command.CommandText = "ALTER TABLE LokOpenHours ADD COLUMN isActive INTEGER NOT NULL DEFAULT 0;";
+                    command.ExecuteNonQuery();
+                }
+
+                command.CommandText = "SELECT COUNT(*) FROM LokOpenHours WHERE isActive = 1;";
+                var activeCount = Convert.ToInt32(command.ExecuteScalar());
+
+                if (activeCount == 0)
+                {
+                    command.CommandText = @"
+                                            UPDATE LokOpenHours
+                                            SET isActive = 1
+                                            WHERE id = (
+                                                SELECT id
+                                                FROM LokOpenHours
+                                                ORDER BY datetime(version) DESC, id DESC
+                                                LIMIT 1
+                                            );";
+                    command.ExecuteNonQuery();
+                }
+                else if (activeCount > 1)
+                {
+                    command.CommandText = @"
+                                            WITH selected_active AS (
+                                                SELECT id
+                                                FROM LokOpenHours
+                                                WHERE isActive = 1
+                                                ORDER BY datetime(version) DESC, id DESC
+                                                LIMIT 1
+                                            )
+                                            UPDATE LokOpenHours
+                                            SET isActive = CASE
+                                                WHEN id = (SELECT id FROM selected_active) THEN 1
+                                                ELSE 0
+                                            END
+                                            WHERE isActive = 1
+                                                OR id = (SELECT id FROM selected_active);";
+                    command.ExecuteNonQuery();
+                }
+
+                command.CommandText = @"
+                                    CREATE UNIQUE INDEX IF NOT EXISTS IX_LokOpenHours_OneActive
+                                    ON LokOpenHours(isActive)
+                                    WHERE isActive = 1;";
+                command.ExecuteNonQuery();
             }
         }
 
@@ -72,7 +137,12 @@ public class Program
             app.MapOpenApi();
         }
 
-        app.UseHttpsRedirection();
+        app.UseCors("UiCors");
+
+        if (!app.Environment.IsDevelopment())
+        {
+            app.UseHttpsRedirection();
+        }
 
         SystemEndpoints.MapSystemEndpoints(app);
         LokEndpoints.MapLokEndpoints(app);

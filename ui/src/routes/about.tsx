@@ -1,20 +1,39 @@
-import { Title } from "@solidjs/meta";
-import { createAsync } from "@solidjs/router";
-import { Show } from "solid-js";
+import { useEffect, useState } from "react";
 import { queryApiVersion } from "~/api";
-import { t } from "~/i18n";
+import { useT } from "~/i18n";
 
 export default function About() {
-  const apiVersion = createAsync(() => queryApiVersion());
+  const t = useT();
+  const [apiVersion, setApiVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.title = t("about.title");
+  }, [t]);
+
+  useEffect(() => {
+    let active = true;
+
+    queryApiVersion()
+      .then((version) => {
+        if (active) {
+          setApiVersion(version);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setApiVersion(null);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <main>
-      <Title>{t("about.title")}</Title>
-      <p class="text-[#70421E] text-center">
-        {t("about.apiVersion")}:
-        <Show when={apiVersion()} fallback={t("about.loading")}>
-          {apiVersion()}
-        </Show>
+      <p className="text-center text-[#70421E]">
+        {t("about.apiVersion")}: {apiVersion ?? t("about.loading")}
       </p>
     </main>
   );

@@ -1,7 +1,6 @@
-import { createSignal } from "solid-js";
-import { isServer } from "solid-js/web";
-
-export type Language = "fi" | "en";
+import { useMemo } from "react";
+import { useRecoilState, useRecoilValue } from "recoil";
+import { languageAtom, type Language } from "~/state/appState";
 
 const STORAGE_KEY = "ui-language";
 
@@ -13,7 +12,7 @@ const translations = {
     "nav.signOut": "Sign Out",
     "nav.language.fi": "FI",
     "nav.language.en": "EN",
-    "meta.description": "SolidStart with-auth example",
+    "meta.description": "React + Recoil example",
     "home.title": "Home",
     "home.heading": "KlAPI",
     "home.signedInAs": "You are signed in as",
@@ -21,8 +20,12 @@ const translations = {
     "home.openHours.heading": "Open hours versions",
     "home.openHours.latest": "Latest",
     "home.openHours.new": "New version",
+    "home.openHours.edit": "Edit",
+    "home.openHours.cancel": "Cancel",
+    "home.openHours.editing": "Editing version",
+    "home.openHours.active": "Active",
     "home.openHours.reuse": "Reuse selected",
-    "home.openHours.delete": "Delete selected",
+    "home.openHours.delete": "Delete",
     "home.openHours.empty": "No open-hours versions found yet",
     "home.openHours.name": "Version name",
     "home.openHours.nameRequired": "Version name is required",
@@ -32,8 +35,11 @@ const translations = {
     "home.openHours.paragraph4": "Paragraph 4",
     "home.openHours.kitchenNotice": "Kitchen notice",
     "home.openHours.submit": "Add new version",
+    "home.openHours.update": "Save changes",
     "home.openHours.saving": "Saving...",
+    "home.openHours.updating": "Saving changes...",
     "home.openHours.saved": "New version saved",
+    "home.openHours.updated": "Version updated",
     "home.openHours.deleted": "Version deleted",
     "about.title": "About",
     "about.apiVersion": "API version",
@@ -48,12 +54,7 @@ const translations = {
     "notFound.message": "Sorry, the page you’re looking for doesn't exist",
     "notFound.goHome": "Go Home",
     "error.title": "Error",
-    "counter.clicks": "Clicks",
     "errors.requiredEmailPassword": "Email and password are required",
-    "errors.invalidStoredPasswordFormat": "Invalid stored password format",
-    "errors.invalidEmailOrPassword": "Invalid email or password",
-    "errors.oauthOnly":
-      "Account exists via OAuth. Sign in with your OAuth provider",
   },
   fi: {
     "nav.home": "Etusivu",
@@ -62,7 +63,7 @@ const translations = {
     "nav.signOut": "Kirjaudu ulos",
     "nav.language.fi": "FI",
     "nav.language.en": "EN",
-    "meta.description": "SolidStart with-auth -esimerkki",
+    "meta.description": "React + Recoil -esimerkki",
     "home.title": "Etusivu",
     "home.heading": "KlAPI",
     "home.signedInAs": "Olet kirjautunut käyttäjänä",
@@ -70,8 +71,12 @@ const translations = {
     "home.openHours.heading": "Aukioloaikaversiot",
     "home.openHours.latest": "Viimeisin",
     "home.openHours.new": "Uusi versio",
+    "home.openHours.edit": "Muokkaa",
+    "home.openHours.cancel": "Peruuta",
+    "home.openHours.editing": "Muokataan versiota",
+    "home.openHours.active": "Aktiivinen",
     "home.openHours.reuse": "Käytä valittua uudelleen",
-    "home.openHours.delete": "Poista valittu",
+    "home.openHours.delete": "Poista",
     "home.openHours.empty": "Aukioloaikaversioita ei vielä löytynyt",
     "home.openHours.name": "Version nimi",
     "home.openHours.nameRequired": "Version nimi on pakollinen",
@@ -81,8 +86,11 @@ const translations = {
     "home.openHours.paragraph4": "Kappale 4",
     "home.openHours.kitchenNotice": "Keittiöhuomio",
     "home.openHours.submit": "Lisää uusi versio",
+    "home.openHours.update": "Tallenna muutokset",
     "home.openHours.saving": "Tallennetaan...",
+    "home.openHours.updating": "Tallennetaan muutoksia...",
     "home.openHours.saved": "Uusi versio tallennettu",
+    "home.openHours.updated": "Versio päivitetty",
     "home.openHours.deleted": "Versio poistettu",
     "about.title": "Tietoja",
     "about.apiVersion": "API-versio",
@@ -97,12 +105,7 @@ const translations = {
     "notFound.message": "Valitettavasti etsimääsi sivua ei ole olemassa",
     "notFound.goHome": "Takaisin etusivulle",
     "error.title": "Virhe",
-    "counter.clicks": "Klikkauksia",
     "errors.requiredEmailPassword": "Sähköposti ja salasana vaaditaan",
-    "errors.invalidStoredPasswordFormat":
-      "Tallennetun salasanan muoto on virheellinen",
-    "errors.invalidEmailOrPassword": "Virheellinen sähköposti tai salasana",
-    "errors.oauthOnly": "Tili löytyy OAuthin kautta. Kirjaudu OAuth-palvelulla",
   },
 } as const;
 
@@ -111,25 +114,27 @@ export type TranslationKey = keyof typeof translations.en;
 export const normalizeLanguage = (value: unknown): Language =>
   value === "fi" ? "fi" : "en";
 
-const [language, setLanguageSignal] = createSignal<Language>("en");
-
-if (!isServer) {
+export const initializeLanguage = (setLanguage: (lang: Language) => void) => {
   const stored = normalizeLanguage(localStorage.getItem(STORAGE_KEY));
-  setLanguageSignal(stored);
-}
-
-export const setLanguage = (lang: Language) => {
-  setLanguageSignal(lang);
-  if (!isServer) {
-    localStorage.setItem(STORAGE_KEY, lang);
-  }
+  setLanguage(stored);
 };
 
-export { language };
+export const useLanguage = () => {
+  const [language, setLanguageState] = useRecoilState(languageAtom);
 
-export const getTranslations = (lang: Language) => translations[lang];
+  const setLanguage = (lang: Language) => {
+    setLanguageState(lang);
+    localStorage.setItem(STORAGE_KEY, lang);
+  };
 
-export const t = (key: TranslationKey) => translations[language()][key];
+  return { language, setLanguage };
+};
 
-export const getLanguageFromFormData = (formData: FormData): Language =>
-  normalizeLanguage(formData.get("lang"));
+export const useT = () => {
+  const language = useRecoilValue(languageAtom);
+
+  return useMemo(
+    () => (key: TranslationKey) => translations[language][key],
+    [language],
+  );
+};

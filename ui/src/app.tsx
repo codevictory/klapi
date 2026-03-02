@@ -1,41 +1,57 @@
-import { type RouteDefinition, Router } from "@solidjs/router";
-import { FileRoutes } from "@solidjs/start/router";
-import { Meta, MetaProvider } from "@solidjs/meta";
-import { createEffect, Suspense } from "solid-js";
-import { querySession } from "./auth";
-import Auth from "./components/Context";
-import Nav from "./components/Nav";
-import ErrorNotification from "./components/Error";
-import { language, t } from "~/i18n";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { useEffect } from "react";
+import { useSetRecoilState } from "recoil";
+import Nav from "~/components/Nav";
+import Home from "~/routes/index";
+import About from "~/routes/about";
+import Login from "~/routes/login";
+import NotFound from "~/routes/[...404]";
+import Toasts from "~/components/Toasts";
+import { initializeLanguage, useLanguage } from "~/i18n";
+import { sessionAtom } from "~/state/appState";
 import "./app.css";
 
-export const route: RouteDefinition = {
-  preload: ({ location }) => querySession(location.pathname)
-};
+function AppShell() {
+  const { language, setLanguage } = useLanguage();
+  const setSession = useSetRecoilState(sessionAtom);
 
-export default function App() {
-  createEffect(() => {
-    if (typeof document !== "undefined") {
-      document.documentElement.lang = language();
+  useEffect(() => {
+    initializeLanguage(setLanguage);
+  }, [setLanguage]);
+
+  useEffect(() => {
+    const storedEmail = localStorage.getItem("session-email");
+    if (!storedEmail) {
+      setSession(null);
+      return;
     }
-  });
+
+    setSession({ email: storedEmail });
+  }, [setSession]);
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   return (
-    <Router
-      root={props => (
-        <MetaProvider>
-          <Meta name="description" content={t("meta.description")} />
-          <Auth>
-            <Suspense>
-              <Nav />
-              {props.children}
-              <ErrorNotification />
-            </Suspense>
-          </Auth>
-        </MetaProvider>
-      )}
-    >
-      <FileRoutes />
-    </Router>
+    <>
+      <Nav />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="*" element={<NotFound />} />
+        <Route path="/index.html" element={<Navigate to="/" replace />} />
+      </Routes>
+      <Toasts />
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppShell />
+    </BrowserRouter>
   );
 }

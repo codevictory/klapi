@@ -1,4 +1,3 @@
-import { action, query } from "@solidjs/router";
 import { buildApiUrl } from "./url";
 
 async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
@@ -22,15 +21,10 @@ async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
-export const queryApiVersion = query(async () => {
-  "use server";
-  const data = await fetchApi<{ version: string }>("/");
-  return data.version;
-}, "api-version");
-
 export type LokOpenHours = {
   id: number;
   name: string;
+  isActive: boolean;
   version: string;
   paragraph1: string;
   paragraph2: string;
@@ -39,14 +33,28 @@ export type LokOpenHours = {
   kitchenNotice: string;
 };
 
-export const queryLokOpenHours = query(async (_refreshKey = 0) => {
-  "use server";
-  return await fetchApi<LokOpenHours[]>("/lok/open-hours");
-}, "lok-open-hours");
+export type LokOpenHoursInput = {
+  name: string;
+  paragraph1: string;
+  paragraph2: string;
+  paragraph3: string;
+  paragraph4: string;
+  kitchenNotice: string;
+};
 
-export const createLokOpenHours = action(async (formData: FormData) => {
-  "use server";
-  const name = String(formData.get("name") ?? "").trim();
+export async function queryApiVersion(): Promise<string> {
+  const data = await fetchApi<{ version: string }>("/");
+  return data.version;
+}
+
+export async function queryLokOpenHours(): Promise<LokOpenHours[]> {
+  return await fetchApi<LokOpenHours[]>("/lok/open-hours");
+}
+
+export async function createLokOpenHours(
+  input: LokOpenHoursInput,
+): Promise<LokOpenHours> {
+  const name = input.name.trim();
 
   if (!name) {
     throw new Error("Open hours version name is required.");
@@ -55,25 +63,54 @@ export const createLokOpenHours = action(async (formData: FormData) => {
   const payload = {
     id: 0,
     name,
+    isActive: false,
     version: new Date().toISOString(),
-    paragraph1: String(formData.get("paragraph1") ?? ""),
-    paragraph2: String(formData.get("paragraph2") ?? ""),
-    paragraph3: String(formData.get("paragraph3") ?? ""),
-    paragraph4: String(formData.get("paragraph4") ?? ""),
-    kitchenNotice: String(formData.get("kitchenNotice") ?? ""),
+    paragraph1: input.paragraph1,
+    paragraph2: input.paragraph2,
+    paragraph3: input.paragraph3,
+    paragraph4: input.paragraph4,
+    kitchenNotice: input.kitchenNotice,
   } satisfies LokOpenHours;
 
   return await fetchApi<LokOpenHours>("/lok/open-hours", {
     method: "POST",
     body: JSON.stringify(payload),
   });
-});
+}
 
-export const deleteLokOpenHours = action(async (formData: FormData) => {
-  "use server";
-  const idValue = String(formData.get("id") ?? "").trim();
-  const id = Number(idValue);
+export async function updateLokOpenHours(
+  id: number,
+  input: LokOpenHoursInput,
+): Promise<LokOpenHours> {
+  if (!Number.isFinite(id) || id <= 0) {
+    throw new Error("Open hours id is required for update.");
+  }
 
+  const name = input.name.trim();
+
+  if (!name) {
+    throw new Error("Open hours version name is required.");
+  }
+
+  const payload = {
+    id,
+    name,
+    isActive: false,
+    version: new Date().toISOString(),
+    paragraph1: input.paragraph1,
+    paragraph2: input.paragraph2,
+    paragraph3: input.paragraph3,
+    paragraph4: input.paragraph4,
+    kitchenNotice: input.kitchenNotice,
+  } satisfies LokOpenHours;
+
+  return await fetchApi<LokOpenHours>(`/lok/open-hours/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteLokOpenHours(id: number): Promise<void> {
   if (!Number.isFinite(id) || id <= 0) {
     throw new Error("Open hours id is required for delete.");
   }
@@ -81,6 +118,19 @@ export const deleteLokOpenHours = action(async (formData: FormData) => {
   await fetchApi<void>(`/lok/open-hours/${id}`, {
     method: "DELETE",
   });
+}
 
-  return { deleted: true };
-});
+export async function setActiveLokOpenHours(
+  id: number,
+): Promise<{ id: number; isActive: boolean }> {
+  if (!Number.isFinite(id) || id <= 0) {
+    throw new Error("Open hours id is required for setting active version.");
+  }
+
+  return await fetchApi<{ id: number; isActive: boolean }>(
+    `/lok/open-hours/${id}/active`,
+    {
+      method: "PUT",
+    },
+  );
+}

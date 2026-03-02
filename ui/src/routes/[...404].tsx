@@ -1,18 +1,24 @@
-import { Title } from "@solidjs/meta";
-import { t } from "~/i18n";
+import { Link } from "react-router-dom";
+import { useEffect } from "react";
+import { useT } from "~/i18n";
 
 export default function NotFound() {
+  const t = useT();
+
+  useEffect(() => {
+    document.title = t("notFound.title");
+  }, [t]);
+
   return (
-    <main class="text-center">
-      <Title>{t("notFound.title")}</Title>
+    <main className="text-center">
       <h1>{t("notFound.heading")}</h1>
-      {t("notFound.message")}
-      <a
-        href="/"
-        class="px-4 py-2 border border-[#C99763] rounded-xl text-[#70421E] hover:bg-[#F5D1A9] transition-colors duration-200"
+      <p>{t("notFound.message")}</p>
+      <Link
+        to="/"
+        className="rounded-xl border border-[#C99763] px-4 py-2 text-[#70421E] transition-colors duration-200 hover:bg-[#F5D1A9]"
       >
         {t("notFound.goHome")}
-      </a>
+      </Link>
     </main>
   );
 }

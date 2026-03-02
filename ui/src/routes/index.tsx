@@ -1,13 +1,18 @@
-import { Title } from "@solidjs/meta";
+import { useEffect } from "react";
 import OpenHoursForm from "~/components/OpenHoursForm";
-import { t } from "~/i18n";
+import { useT } from "~/i18n";
 
 export default function Home() {
+  const t = useT();
+
+  useEffect(() => {
+    document.title = t("home.title");
+  }, [t]);
+
   return (
     <main>
-      <Title>{t("home.title")}</Title>
-      <h1 class="text-center">{t("home.heading")}</h1>
-      <img src="/favicon.svg" alt={t("home.logoAlt")} class="w-28" />
+      <h1 className="text-center">{t("home.heading")}</h1>
+      <img src="/favicon.svg" alt={t("home.logoAlt")} className="w-28" />
       <OpenHoursForm />
     </main>
   );

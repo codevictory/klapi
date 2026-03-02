@@ -65,6 +65,64 @@ public class ApiEndpointsTests(ApiTestFactory factory) : IClassFixture<ApiTestFa
     var openHours = await getResponse.Content.ReadFromJsonAsync<List<LokOpenHoursDto>>();
     Assert.NotNull(openHours);
     Assert.Contains(openHours, item => item.Id == created.Id);
+    Assert.True(openHours.Count(item => item.IsActive) <= 1);
+
+    var createSecondPayload = new
+    {
+      id = 0,
+      name = "test-version-2",
+      version = DateTime.UtcNow.ToString("O"),
+      paragraph1 = "p1b",
+      paragraph2 = "p2b",
+      paragraph3 = "p3b",
+      paragraph4 = "p4b",
+      kitchenNotice = "k1b"
+    };
+
+    var createSecondResponse = await _client.PostAsJsonAsync("/lok/open-hours", createSecondPayload);
+    Assert.Equal(HttpStatusCode.Created, createSecondResponse.StatusCode);
+
+    var createdSecond = await createSecondResponse.Content.ReadFromJsonAsync<LokOpenHoursDto>();
+    Assert.NotNull(createdSecond);
+    Assert.True(createdSecond.IsActive);
+
+    var setActiveResponse = await _client.PutAsync($"/lok/open-hours/{created.Id}/active", null);
+    Assert.Equal(HttpStatusCode.OK, setActiveResponse.StatusCode);
+
+    var updatePayload = new
+    {
+      id = created.Id,
+      name = "updated-version",
+      version = DateTime.UtcNow.ToString("O"),
+      paragraph1 = "updated-p1",
+      paragraph2 = "updated-p2",
+      paragraph3 = "updated-p3",
+      paragraph4 = "updated-p4",
+      kitchenNotice = "updated-k1"
+    };
+
+    var updateResponse = await _client.PutAsJsonAsync($"/lok/open-hours/{created.Id}", updatePayload);
+    Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
+
+    var updated = await updateResponse.Content.ReadFromJsonAsync<LokOpenHoursDto>();
+    Assert.NotNull(updated);
+    Assert.Equal(created.Id, updated.Id);
+    Assert.Equal(updatePayload.name, updated.Name);
+    Assert.Equal(updatePayload.paragraph1, updated.Paragraph1);
+
+    var getAfterUpdateResponse = await _client.GetAsync("/lok/open-hours");
+    Assert.Equal(HttpStatusCode.OK, getAfterUpdateResponse.StatusCode);
+
+    var openHoursAfterUpdate = await getAfterUpdateResponse.Content.ReadFromJsonAsync<List<LokOpenHoursDto>>();
+    Assert.NotNull(openHoursAfterUpdate);
+    var updatedInList = openHoursAfterUpdate.Single(item => item.Id == created.Id);
+    Assert.Equal(updatePayload.name, updatedInList.Name);
+    Assert.Equal(updatePayload.paragraph4, updatedInList.Paragraph4);
+
+    var activeCount = openHoursAfterUpdate.Count(item => item.IsActive);
+    Assert.Equal(1, activeCount);
+    Assert.False(openHoursAfterUpdate.Single(item => item.Id == createdSecond.Id).IsActive);
+    Assert.True(openHoursAfterUpdate.Single(item => item.Id == created.Id).IsActive);
 
     var deleteResponse = await _client.DeleteAsync($"/lok/open-hours/{created.Id}");
     Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
@@ -116,6 +174,8 @@ public class LokOpenHoursDto
   public long Id { get; set; }
 
   public string Name { get; set; } = string.Empty;
+
+  public bool IsActive { get; set; }
 
   public DateTime Version { get; set; }
 
