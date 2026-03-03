@@ -9,7 +9,7 @@ export default function Login() {
   const t = useT();
   const navigate = useNavigate();
   const [session, setSession] = useRecoilState(sessionAtom);
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
@@ -25,45 +25,50 @@ export default function Login() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
 
-    if (!email.trim() || !password.trim()) {
-      setError(t("errors.requiredEmailPassword"));
+    if (!username.trim() || !password.trim()) {
+      setError(t("errors.requiredUsernamePassword"));
       return;
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedUsername = username.trim().toLowerCase();
 
     try {
-      const auth = await requestAuthToken(normalizedEmail, password);
+      const auth = await requestAuthToken(normalizedUsername, password);
 
       setSession({
-        email: auth.email,
+        username: auth.username,
+        displayName: auth.displayName,
+        isAdmin: auth.isAdmin,
         token: auth.accessToken,
       });
 
-      localStorage.setItem("session-email", auth.email);
+      localStorage.setItem("session-username", auth.username);
+      localStorage.setItem("session-display-name", auth.displayName);
+      localStorage.setItem("session-is-admin", auth.isAdmin ? "true" : "false");
       localStorage.setItem("session-token", auth.accessToken);
       setError("");
       navigate("/");
     } catch {
-      setError(t("errors.invalidEmailOrPassword"));
+      setError(t("errors.invalidUsernameOrPassword"));
     }
   };
 
   return (
     <main>
       <h1>{t("login.heading")}</h1>
+      <h2>{t("login.subheading")}</h2>
       <form onSubmit={submit} className="w-full max-w-md space-y-4 px-4">
-        <label htmlFor="email" className="block w-full text-left">
-          {t("login.email")}
+        <label htmlFor="username" className="block w-full text-left">
+          {t("login.username")}
           <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            placeholder="john@doe.com"
+            id="username"
+            name="username"
+            type="text"
+            autoComplete="username"
+            placeholder={t("login.username")}
             required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
             className="mt-1 block w-full rounded-md border border-[#C99763] bg-[#FFF7EE] px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#A56C38]"
           />
         </label>
@@ -75,7 +80,7 @@ export default function Login() {
             name="password"
             type="password"
             autoComplete="current-password"
-            minLength={6}
+            placeholder={t("login.password")}
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}

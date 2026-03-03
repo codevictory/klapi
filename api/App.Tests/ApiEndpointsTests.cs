@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 
 namespace App.Tests;
 
@@ -164,7 +165,7 @@ public class ProductionAuthTests(ProductionApiTestFactory factory) : IClassFixtu
   {
     var tokenResponse = await _client.PostAsJsonAsync("/auth/token", new
     {
-      email = "admin@klapi.local",
+      username = "admin",
       password = "changeme"
     });
 
@@ -191,6 +192,54 @@ public class ProductionAuthTests(ProductionApiTestFactory factory) : IClassFixtu
 
     Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
   }
+
+  [Fact]
+  public async Task UserManagement_Crud_WorksForAdminInProduction()
+  {
+    var tokenResponse = await _client.PostAsJsonAsync("/auth/token", new
+    {
+      username = "admin",
+      password = "changeme"
+    });
+
+    Assert.Equal(HttpStatusCode.OK, tokenResponse.StatusCode);
+    var auth = await tokenResponse.Content.ReadFromJsonAsync<AuthTokenDto>();
+    Assert.NotNull(auth);
+
+    _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.AccessToken);
+
+    var createResponse = await _client.PostAsJsonAsync("/users", new
+    {
+      username = "editor",
+      password = "editorpass",
+      isAdmin = false,
+      displayName = "Editor User"
+    });
+
+    Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+    var usersResponse = await _client.GetAsync("/users");
+    Assert.Equal(HttpStatusCode.OK, usersResponse.StatusCode);
+    var users = await usersResponse.Content.ReadFromJsonAsync<List<UserDto>>();
+    Assert.NotNull(users);
+    Assert.Contains(users, user => user.Username == "editor");
+
+    var updateResponse = await _client.PutAsJsonAsync("/users/editor", new
+    {
+      password = "editorpass2",
+      isAdmin = true,
+      displayName = "Editor Admin"
+    });
+
+    Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
+    var updatedUser = await updateResponse.Content.ReadFromJsonAsync<UserDto>();
+    Assert.NotNull(updatedUser);
+    Assert.True(updatedUser.IsAdmin);
+    Assert.Equal("Editor Admin", updatedUser.DisplayName);
+
+    var deleteResponse = await _client.DeleteAsync("/users/editor");
+    Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+  }
 }
 
 public abstract class ApiTestFactoryBase(string environmentName) : WebApplicationFactory<Program>
@@ -207,12 +256,13 @@ public abstract class ApiTestFactoryBase(string environmentName) : WebApplicatio
       configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
       {
         ["ConnectionStrings:DefaultConnection"] = $"Data Source={_dbPath}",
-        ["Auth:Issuer"] = "klapi-api-tests",
-        ["Auth:Audience"] = "klapi-ui-tests",
-        ["Auth:SigningKey"] = "test-signing-key-which-is-at-least-32-characters-long",
+        ["Auth:Issuer"] = "klapi-api",
+        ["Auth:Audience"] = "klapi-ui",
+        ["Auth:SigningKey"] = "change-this-to-a-long-random-32-char-minimum-key",
         ["Auth:AllowedOrigins:0"] = "http://localhost:5173",
-        ["Auth:Users:0:Email"] = "admin@klapi.local",
-        ["Auth:Users:0:Password"] = "changeme"
+        ["Auth:Admin:Username"] = "admin",
+        ["Auth:Admin:Password"] = "changeme",
+        ["Auth:Admin:DisplayName"] = "Administrator"
       });
     });
   }
@@ -278,9 +328,26 @@ public class AuthTokenDto
 {
   public string AccessToken { get; set; } = string.Empty;
 
-  public string Email { get; set; } = string.Empty;
+  public string Username { get; set; } = string.Empty;
+
+  public string DisplayName { get; set; } = string.Empty;
+
+  public bool IsAdmin { get; set; }
 
   public string TokenType { get; set; } = string.Empty;
 
   public int ExpiresIn { get; set; }
+}
+
+public class UserDto
+{
+  public string Username { get; set; } = string.Empty;
+
+  public DateTime Added { get; set; }
+
+  public DateTime LastUpdated { get; set; }
+
+  public bool IsAdmin { get; set; }
+
+  public string DisplayName { get; set; } = string.Empty;
 }

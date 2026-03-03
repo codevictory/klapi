@@ -12,7 +12,9 @@ export default function Nav() {
 
   const signOut = () => {
     setSession(null);
-    localStorage.removeItem("session-email");
+    localStorage.removeItem("session-username");
+    localStorage.removeItem("session-display-name");
+    localStorage.removeItem("session-is-admin");
     localStorage.removeItem("session-token");
     navigate("/login");
   };
@@ -27,9 +29,12 @@ export default function Nav() {
     <nav className="fixed top-0 left-0 z-50 flex w-full items-center justify-between bg-[#70421E] px-4 py-3 text-sm font-medium shadow-sm">
       <Link to="/" className={linkClass("/")}>{t("nav.home")}</Link>
       <Link to="/about" className={linkClass("/about")}>{t("nav.about")}</Link>
+      {session?.isAdmin ? (
+        <Link to="/management" className={linkClass("/management")}>{t("nav.management")}</Link>
+      ) : null}
 
       <div className="ml-auto flex items-center gap-2">
-        <b className="text-[#F5D1A9]">{session?.email ?? ""}</b>
+        <b className="text-[#F5D1A9]">{session?.displayName ?? ""}</b>
         <div className="flex items-center gap-1 rounded-md border border-[#8E4F24] bg-[#8E4F24]/45 p-1">
           <button
             type="button"

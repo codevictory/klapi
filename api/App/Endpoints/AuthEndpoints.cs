@@ -4,12 +4,13 @@ using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
-public record AuthTokenRequest(string Email, string Password);
+public record AuthTokenRequest(string? Username, string Password);
 
-public class AuthUser
+public class AuthAdminOptions
 {
-  public string Email { get; set; } = string.Empty;
+  public string Username { get; set; } = string.Empty;
   public string Password { get; set; } = string.Empty;
+  public string DisplayName { get; set; } = string.Empty;
 }
 
 public class AuthOptions
@@ -18,28 +19,28 @@ public class AuthOptions
   public string Audience { get; set; } = "klapi-ui";
   public string SigningKey { get; set; } = string.Empty;
   public List<string> AllowedOrigins { get; set; } = [];
-  public List<AuthUser> Users { get; set; } = [];
+  public AuthAdminOptions Admin { get; set; } = new();
 }
 
 public static class AuthEndpoints
 {
   public static void MapAuthEndpoints(WebApplication app)
   {
-    app.MapPost("/auth/token", (
+    app.MapPost("/auth/token", async (
       HttpContext httpContext,
       IOptions<AuthOptions> authOptions,
+      UserService userService,
       AuthTokenRequest request) =>
     {
-      if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+      if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
       {
-        return Results.BadRequest(new { Message = "Email and password are required." });
+        return Results.BadRequest(new { Message = "Username and password are required." });
       }
 
       var options = authOptions.Value;
-      var user = options.Users.FirstOrDefault(item =>
-        string.Equals(item.Email, request.Email.Trim(), StringComparison.OrdinalIgnoreCase));
+      var authenticatedUser = await userService.Authenticate(request.Username, request.Password);
 
-      if (user is null || !string.Equals(user.Password, request.Password, StringComparison.Ordinal))
+      if (authenticatedUser is null)
       {
         return Results.Unauthorized();
       }
@@ -48,9 +49,11 @@ public static class AuthEndpoints
       var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
       var claims = new List<Claim>
       {
-        new(JwtRegisteredClaimNames.Sub, user.Email),
-        new(JwtRegisteredClaimNames.Email, user.Email),
-        new(ClaimTypes.Name, user.Email),
+        new(JwtRegisteredClaimNames.Sub, authenticatedUser.Username),
+        new(ClaimTypes.Name, authenticatedUser.Username),
+        new("username", authenticatedUser.Username),
+        new("display_name", authenticatedUser.DisplayName),
+        new("is_admin", authenticatedUser.IsAdmin ? "true" : "false"),
         new("scope", "openhours:write")
       };
 
@@ -66,7 +69,9 @@ public static class AuthEndpoints
       return Results.Ok(new
       {
         AccessToken = tokenValue,
-        Email = user.Email,
+        Username = authenticatedUser.Username,
+        DisplayName = authenticatedUser.DisplayName,
+        IsAdmin = authenticatedUser.IsAdmin,
         TokenType = "Bearer",
         ExpiresIn = 43200
       });

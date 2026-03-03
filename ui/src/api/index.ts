@@ -2,7 +2,9 @@ import { buildApiUrl } from "./url";
 
 type AuthTokenResponse = {
   accessToken: string;
-  email: string;
+  username: string;
+  displayName: string;
+  isAdmin: boolean;
   tokenType: string;
   expiresIn: number;
 };
@@ -55,6 +57,27 @@ export type LokOpenHoursInput = {
   paragraph3: string;
   paragraph4: string;
   kitchenNotice: string;
+};
+
+export type User = {
+  username: string;
+  added: string;
+  lastUpdated: string;
+  isAdmin: boolean;
+  displayName: string;
+};
+
+export type CreateUserInput = {
+  username: string;
+  password: string;
+  isAdmin: boolean;
+  displayName: string;
+};
+
+export type UpdateUserInput = {
+  password?: string;
+  isAdmin: boolean;
+  displayName: string;
 };
 
 export async function queryApiVersion(): Promise<string> {
@@ -163,14 +186,54 @@ export async function setActiveLokOpenHours(
 }
 
 export async function requestAuthToken(
-  email: string,
+  username: string,
   password: string,
 ): Promise<AuthTokenResponse> {
   return await fetchApi<AuthTokenResponse>("/auth/token", {
     method: "POST",
     body: JSON.stringify({
-      email,
+      username,
       password,
     }),
+  });
+}
+
+export async function queryUsers(): Promise<User[]> {
+  return await fetchApi<User[]>("/users", {
+    headers: {
+      Authorization: `Bearer ${getAccessToken()}`,
+    },
+  });
+}
+
+export async function createUser(input: CreateUserInput): Promise<User> {
+  return await fetchApi<User>("/users", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${getAccessToken()}`,
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateUser(
+  username: string,
+  input: UpdateUserInput,
+): Promise<User> {
+  return await fetchApi<User>(`/users/${encodeURIComponent(username)}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${getAccessToken()}`,
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteUser(username: string): Promise<void> {
+  await fetchApi<void>(`/users/${encodeURIComponent(username)}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${getAccessToken()}`,
+    },
   });
 }

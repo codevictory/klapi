@@ -30,15 +30,18 @@ public class Program
             throw new InvalidOperationException("Auth:SigningKey must be at least 32 characters long.");
         }
 
-        if (authOptions.Users.Count == 0)
+        if (string.IsNullOrWhiteSpace(authOptions.Admin.Username)
+            || string.IsNullOrWhiteSpace(authOptions.Admin.Password)
+            || string.IsNullOrWhiteSpace(authOptions.Admin.DisplayName))
         {
-            throw new InvalidOperationException("At least one user must be configured under Auth:Users.");
+            throw new InvalidOperationException("Auth:Admin username, password and display name must be configured.");
         }
 
         builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection("Auth"));
 
         builder.Services.AddScoped(_ => new SqliteConnection(resolvedConnectionString));
         builder.Services.AddScoped<LokService>();
+        builder.Services.AddScoped<UserService>();
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("PublicReadCors", policy =>
@@ -81,6 +84,12 @@ public class Program
             {
                 policy.RequireAuthenticatedUser();
                 policy.RequireClaim("scope", "openhours:write");
+            });
+
+            options.AddPolicy("AdminOnly", policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireClaim("is_admin", "true");
             });
         });
 
@@ -177,7 +186,18 @@ public class Program
                                     ON LokOpenHours(isActive)
                                     WHERE isActive = 1;";
                 command.ExecuteNonQuery();
+
+                command.CommandText = @"
+                                    CREATE UNIQUE INDEX IF NOT EXISTS IX_Users_Username
+                                    ON Users(username);";
+                command.ExecuteNonQuery();
             }
+        }
+
+        using (var scope = app.Services.CreateScope())
+        {
+            var userService = scope.ServiceProvider.GetRequiredService<UserService>();
+            userService.EnsureAdminUser(authOptions.Admin).GetAwaiter().GetResult();
         }
 
         if (app.Environment.IsDevelopment())
@@ -198,6 +218,7 @@ public class Program
         SystemEndpoints.MapSystemEndpoints(app);
         AuthEndpoints.MapAuthEndpoints(app);
         LokEndpoints.MapLokEndpoints(app);
+        UserEndpoints.MapUserEndpoints(app);
 
         app.Run();
     }

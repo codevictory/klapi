@@ -4,7 +4,9 @@ import type { LokOpenHours } from "~/api";
 export type Language = "fi" | "en";
 
 export type Session = {
-  email: string;
+  username: string;
+  displayName: string;
+  isAdmin: boolean;
   token: string;
 };
 
