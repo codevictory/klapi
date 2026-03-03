@@ -25,6 +25,13 @@ public class Program
         var authOptions = builder.Configuration.GetSection("Auth").Get<AuthOptions>()
             ?? throw new InvalidOperationException("Auth configuration was not found.");
 
+        if (builder.Environment.IsProduction())
+        {
+            authOptions.Admin.Password =
+                Environment.GetEnvironmentVariable("KLAPI_ADMIN_PASSWORD")
+                ?? throw new InvalidOperationException("Admin password must be set in production environment using KLAPI_ADMIN_PASSWORD environment variable.");
+        }
+
         if (string.IsNullOrWhiteSpace(authOptions.SigningKey) || authOptions.SigningKey.Length < 32)
         {
             throw new InvalidOperationException("Auth:SigningKey must be at least 32 characters long.");
