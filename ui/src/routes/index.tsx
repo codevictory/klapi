@@ -12,6 +12,7 @@ export default function Home() {
   return (
     <main>
       <h1 className="text-center">{t("home.heading")}</h1>
+      <h2 className="text-center">{t("home.subheading")}</h2>
       <img src="/favicon.svg" alt={t("home.logoAlt")} className="w-28" />
       <OpenHoursForm />
     </main>
