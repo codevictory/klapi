@@ -33,8 +33,23 @@ ensure_app_window() {
 
 start_or_restart_services() {
 	ensure_app_window
-	tmux respawn-pane -k -t "$SESSION_NAME":app.0 -c "$UI_DIR" "bun dev"
 	tmux respawn-pane -k -t "$SESSION_NAME":app.1 -c "$API_DIR" "dotnet run --project $API_DIR/App/App.csproj"
+
+	local health_url="http://127.0.0.1:5013/health/db"
+	local max_attempts=60
+	local attempt=1
+
+	until curl --silent --fail "$health_url" >/dev/null 2>&1; do
+		if [[ "$attempt" -ge "$max_attempts" ]]; then
+			echo "API did not become healthy in time; starting UI anyway." >&2
+			break
+		fi
+
+		sleep 0.5
+		attempt=$((attempt + 1))
+	done
+
+	tmux respawn-pane -k -t "$SESSION_NAME":app.0 -c "$UI_DIR" "bun dev"
 	tmux select-pane -t "$SESSION_NAME":app.0
 	tmux select-window -t "$SESSION_NAME":app
 }

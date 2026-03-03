@@ -3,12 +3,13 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 
 namespace App.Tests;
 
-public class ApiEndpointsTests(ApiTestFactory factory) : IClassFixture<ApiTestFactory>
+public class ApiEndpointsTests(DevelopmentApiTestFactory factory) : IClassFixture<DevelopmentApiTestFactory>
 {
   private readonly HttpClient _client = factory.CreateClient();
 
@@ -36,34 +37,8 @@ public class ApiEndpointsTests(ApiTestFactory factory) : IClassFixture<ApiTestFa
   }
 
   [Fact]
-  public async Task OpenHours_Crud_Works()
+  public async Task OpenHours_Crud_Works_WithoutAuthInDevelopment()
   {
-    var unauthorizedCreateResponse = await _client.PostAsJsonAsync("/lok/open-hours", new
-    {
-      id = 0,
-      name = "unauthorized",
-      version = DateTime.UtcNow.ToString("O"),
-      paragraph1 = "p1",
-      paragraph2 = "p2",
-      paragraph3 = "p3",
-      paragraph4 = "p4",
-      kitchenNotice = "k1"
-    });
-    Assert.Equal(HttpStatusCode.Unauthorized, unauthorizedCreateResponse.StatusCode);
-
-    var tokenResponse = await _client.PostAsJsonAsync("/auth/token", new
-    {
-      email = "admin@klapi.local",
-      password = "changeme"
-    });
-
-    Assert.Equal(HttpStatusCode.OK, tokenResponse.StatusCode);
-    var auth = await tokenResponse.Content.ReadFromJsonAsync<AuthTokenDto>();
-    Assert.NotNull(auth);
-    Assert.False(string.IsNullOrWhiteSpace(auth.AccessToken));
-
-    _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.AccessToken);
-
     var createPayload = new
     {
       id = 0,
@@ -159,17 +134,85 @@ public class ApiEndpointsTests(ApiTestFactory factory) : IClassFixture<ApiTestFa
   }
 }
 
-public class ApiTestFactory : WebApplicationFactory<Program>
+public class ProductionAuthTests(ProductionApiTestFactory factory) : IClassFixture<ProductionApiTestFactory>
 {
+  private readonly HttpClient _client = factory.CreateClient();
+
+  [Fact]
+  public async Task WriteEndpoints_RequireAuthInProduction()
+  {
+    var createWithoutAuthResponse = await _client.PostAsJsonAsync("/lok/open-hours", new
+    {
+      id = 0,
+      name = "unauthorized",
+      version = DateTime.UtcNow.ToString("O"),
+      paragraph1 = "p1",
+      paragraph2 = "p2",
+      paragraph3 = "p3",
+      paragraph4 = "p4",
+      kitchenNotice = "k1"
+    });
+
+    Assert.Equal(HttpStatusCode.Unauthorized, createWithoutAuthResponse.StatusCode);
+
+    var activateWithoutAuthResponse = await _client.PutAsync("/lok/open-hours/1/active", null);
+    Assert.Equal(HttpStatusCode.Unauthorized, activateWithoutAuthResponse.StatusCode);
+  }
+
+  [Fact]
+  public async Task CreateOpenHours_WorksWithAuthInProduction()
+  {
+    var tokenResponse = await _client.PostAsJsonAsync("/auth/token", new
+    {
+      email = "admin@klapi.local",
+      password = "changeme"
+    });
+
+    Assert.Equal(HttpStatusCode.OK, tokenResponse.StatusCode);
+    var auth = await tokenResponse.Content.ReadFromJsonAsync<AuthTokenDto>();
+    Assert.NotNull(auth);
+    Assert.False(string.IsNullOrWhiteSpace(auth.AccessToken));
+
+    _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.AccessToken);
+
+    var createPayload = new
+    {
+      id = 0,
+      name = "authorized",
+      version = DateTime.UtcNow.ToString("O"),
+      paragraph1 = "p1",
+      paragraph2 = "p2",
+      paragraph3 = "p3",
+      paragraph4 = "p4",
+      kitchenNotice = "k1"
+    };
+
+    var createResponse = await _client.PostAsJsonAsync("/lok/open-hours", createPayload);
+
+    Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+  }
+}
+
+public abstract class ApiTestFactoryBase(string environmentName) : WebApplicationFactory<Program>
+{
+  private readonly string _environmentName = environmentName;
   private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"klapi-tests-{Guid.NewGuid():N}.db");
 
   protected override void ConfigureWebHost(IWebHostBuilder builder)
   {
+    builder.UseEnvironment(_environmentName);
+
     builder.ConfigureAppConfiguration((_, configBuilder) =>
     {
       configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
       {
-        ["ConnectionStrings:DefaultConnection"] = $"Data Source={_dbPath}"
+        ["ConnectionStrings:DefaultConnection"] = $"Data Source={_dbPath}",
+        ["Auth:Issuer"] = "klapi-api-tests",
+        ["Auth:Audience"] = "klapi-ui-tests",
+        ["Auth:SigningKey"] = "test-signing-key-which-is-at-least-32-characters-long",
+        ["Auth:AllowedOrigins:0"] = "http://localhost:5173",
+        ["Auth:Users:0:Email"] = "admin@klapi.local",
+        ["Auth:Users:0:Password"] = "changeme"
       });
     });
   }
@@ -193,6 +236,20 @@ public class ApiTestFactory : WebApplicationFactory<Program>
     catch
     {
     }
+  }
+}
+
+public sealed class DevelopmentApiTestFactory : ApiTestFactoryBase
+{
+  public DevelopmentApiTestFactory() : base(Environments.Development)
+  {
+  }
+}
+
+public sealed class ProductionApiTestFactory : ApiTestFactoryBase
+{
+  public ProductionApiTestFactory() : base(Environments.Production)
+  {
   }
 }
 
