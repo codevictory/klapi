@@ -1,3 +1,11 @@
+public static class AppRoles
+{
+  public const string Lok = "lok";
+  public const string Admin = "admin";
+
+  public static readonly IReadOnlyList<string> All = [Lok, Admin];
+}
+
 public class AppUser
 {
   public long Id { get; set; }
@@ -10,9 +18,9 @@ public class AppUser
 
   public DateTime LastUpdated { get; set; }
 
-  public bool IsAdmin { get; set; }
-
   public string DisplayName { get; set; } = string.Empty;
+
+  public List<string> Roles { get; set; } = [];
 }
 
 public class AppUserView
@@ -23,9 +31,9 @@ public class AppUserView
 
   public DateTime LastUpdated { get; set; }
 
-  public bool IsAdmin { get; set; }
-
   public string DisplayName { get; set; } = string.Empty;
+
+  public List<string> Roles { get; set; } = [];
 }
 
 public class AppUserCreateRequest
@@ -34,16 +42,16 @@ public class AppUserCreateRequest
 
   public string Password { get; set; } = string.Empty;
 
-  public bool IsAdmin { get; set; }
-
   public string DisplayName { get; set; } = string.Empty;
+
+  public List<string> Roles { get; set; } = [];
 }
 
 public class AppUserUpdateRequest
 {
   public string? Password { get; set; }
 
-  public bool IsAdmin { get; set; }
-
   public string DisplayName { get; set; } = string.Empty;
+
+  public List<string> Roles { get; set; } = [];
 }

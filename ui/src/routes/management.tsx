@@ -1,6 +1,8 @@
-import { FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { createUser, deleteUser, queryUsers, updateUser, type User } from "~/api";
 import { useT } from "~/i18n";
+
+const AVAILABLE_ROLES = ["lok", "admin"];
 
 type Mode = "create" | "edit";
 
@@ -11,7 +13,7 @@ export default function Management() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [selectedRoles, setSelectedRoles] = useState<Set<string>>(new Set());
   const [selectedUsername, setSelectedUsername] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -42,7 +44,7 @@ export default function Management() {
     setUsername("");
     setPassword("");
     setDisplayName("");
-    setIsAdmin(false);
+    setSelectedRoles(new Set());
     setSelectedUsername("");
   };
 
@@ -51,9 +53,18 @@ export default function Management() {
     setUsername(user.username);
     setPassword("");
     setDisplayName(user.displayName);
-    setIsAdmin(user.isAdmin);
+    setSelectedRoles(new Set(user.roles));
     setSelectedUsername(user.username);
     setError("");
+  };
+
+  const toggleRole = (role: string) => {
+    setSelectedRoles((prev) => {
+      const next = new Set(prev);
+      if (next.has(role)) next.delete(role);
+      else next.add(role);
+      return next;
+    });
   };
 
   const onSubmit = async (event: FormEvent) => {
@@ -70,13 +81,13 @@ export default function Management() {
           username: username.trim(),
           password: password,
           displayName: displayName.trim(),
-          isAdmin,
+          roles: [...selectedRoles],
         });
       } else {
         await updateUser(selectedUsername, {
           password: password.trim() ? password : undefined,
           displayName: displayName.trim(),
-          isAdmin,
+          roles: [...selectedRoles],
         });
       }
 
@@ -100,7 +111,7 @@ export default function Management() {
   };
 
   return (
-    <main className="w-full px-4">
+    <main className="w-full px-4 !justify-start pt-28 sm:pt-20">
       <h1>{t("management.heading")}</h1>
 
       <form onSubmit={onSubmit} className="mx-auto mt-4 w-full max-w-2xl space-y-3 rounded-md border border-[#C99763] bg-[#FFF7EE] p-4">
@@ -142,15 +153,21 @@ export default function Management() {
           />
         </label>
 
-        <label htmlFor="management-is-admin" className="flex items-center gap-2 text-left">
-          <input
-            id="management-is-admin"
-            type="checkbox"
-            checked={isAdmin}
-            onChange={(event) => setIsAdmin(event.target.checked)}
-          />
-          {t("management.isAdmin")}
-        </label>
+        <div className="block text-left">
+          <span className="block">{t("management.rolesAssign")}</span>
+          <div className="mt-1 flex flex-wrap gap-3">
+            {AVAILABLE_ROLES.map((role) => (
+              <label key={role} className="flex items-center gap-1.5 text-sm">
+                <input
+                  type="checkbox"
+                  checked={selectedRoles.has(role)}
+                  onChange={() => toggleRole(role)}
+                />
+                {role}
+              </label>
+            ))}
+          </div>
+        </div>
 
         <div className="flex gap-2">
           <button
@@ -193,9 +210,13 @@ export default function Management() {
                     <div className="text-xs text-[#8E4F24]">
                       {t("management.updated")}: {new Date(user.lastUpdated).toLocaleString()}
                     </div>
-                    <div className="text-xs text-[#8E4F24]">
-                      {user.isAdmin ? t("management.admin") : t("management.user")}
-                    </div>
+                    {user.roles.length > 0 ? (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {user.roles.map((role) => (
+                          <span key={role} className="rounded bg-[#E3A977] px-1.5 py-0.5 text-xs text-[#4C250E]">{role}</span>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="flex gap-2">

@@ -53,9 +53,12 @@ public static class AuthEndpoints
         new(ClaimTypes.Name, authenticatedUser.Username),
         new("username", authenticatedUser.Username),
         new("display_name", authenticatedUser.DisplayName),
-        new("is_admin", authenticatedUser.IsAdmin ? "true" : "false"),
-        new("scope", "openhours:write")
       };
+
+      foreach (var role in authenticatedUser.Roles)
+      {
+        claims.Add(new Claim(ClaimTypes.Role, role));
+      }
 
       var token = new JwtSecurityToken(
         issuer: options.Issuer,
@@ -71,7 +74,7 @@ public static class AuthEndpoints
         AccessToken = tokenValue,
         Username = authenticatedUser.Username,
         DisplayName = authenticatedUser.DisplayName,
-        IsAdmin = authenticatedUser.IsAdmin,
+        Roles = authenticatedUser.Roles,
         TokenType = "Bearer",
         ExpiresIn = 43200
       });

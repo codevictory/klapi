@@ -87,16 +87,16 @@ public class Program
 
         builder.Services.AddAuthorization(options =>
         {
-            options.AddPolicy("OpenHoursWrite", policy =>
+            options.AddPolicy("HasLokRole", policy =>
             {
                 policy.RequireAuthenticatedUser();
-                policy.RequireClaim("scope", "openhours:write");
+                policy.RequireRole(AppRoles.Lok, AppRoles.Admin);
             });
 
-            options.AddPolicy("AdminOnly", policy =>
+            options.AddPolicy("HasAdminRole", policy =>
             {
                 policy.RequireAuthenticatedUser();
-                policy.RequireClaim("is_admin", "true");
+                policy.RequireRole(AppRoles.Admin);
             });
         });
 
@@ -198,6 +198,49 @@ public class Program
                                     CREATE UNIQUE INDEX IF NOT EXISTS IX_Users_Username
                                     ON Users(username);";
                 command.ExecuteNonQuery();
+
+                // Migration: if UserRoles still has roleId column, rebuild it with roleName
+                command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('UserRoles') WHERE name = 'roleId';";
+                var userRolesHasRoleId = Convert.ToInt32(command.ExecuteScalar()) > 0;
+
+                if (userRolesHasRoleId)
+                {
+                    command.CommandText = @"
+                        CREATE TABLE IF NOT EXISTS UserRoles_new (
+                            userId INTEGER NOT NULL REFERENCES Users(id) ON DELETE CASCADE,
+                            roleName TEXT NOT NULL,
+                            PRIMARY KEY (userId, roleName)
+                        );
+                        INSERT OR IGNORE INTO UserRoles_new (userId, roleName)
+                        SELECT ur.userId, r.name
+                        FROM UserRoles ur
+                        JOIN Roles r ON r.id = ur.roleId;
+                        DROP TABLE UserRoles;
+                        ALTER TABLE UserRoles_new RENAME TO UserRoles;";
+                    command.ExecuteNonQuery();
+                }
+
+                // Migration: drop old Roles table if it exists
+                command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Roles';";
+                var rolesTableExists = Convert.ToInt32(command.ExecuteScalar()) > 0;
+
+                if (rolesTableExists)
+                {
+                    command.CommandText = "DROP TABLE Roles;";
+                    command.ExecuteNonQuery();
+                }
+
+                // Migration: if Users table still has isAdmin column, migrate isAdmin=1 users to admin role
+                command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Users') WHERE name = 'isAdmin';";
+                var usersHasIsAdmin = Convert.ToInt32(command.ExecuteScalar()) > 0;
+
+                if (usersHasIsAdmin)
+                {
+                    command.CommandText = @"
+                        INSERT OR IGNORE INTO UserRoles (userId, roleName)
+                        SELECT id, 'admin' FROM Users WHERE isAdmin = 1;";
+                    command.ExecuteNonQuery();
+                }
             }
         }
 

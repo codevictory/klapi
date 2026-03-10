@@ -11,7 +11,7 @@ public static class UserEndpoints
       await httpContext.Response.WriteAsJsonAsync(users);
     })
     .RequireCors("FrontendWriteCors")
-    .RequireAuthorization("AdminOnly")
+    .RequireAuthorization("HasAdminRole")
     .WithName("GetUsers");
 
     app.MapPost("/users", async (HttpContext httpContext) =>
@@ -56,7 +56,7 @@ public static class UserEndpoints
       }
     })
     .RequireCors("FrontendWriteCors")
-    .RequireAuthorization("AdminOnly")
+    .RequireAuthorization("HasAdminRole")
     .WithName("CreateUser");
 
     app.MapPut("/users/{username}", async (HttpContext httpContext, string username) =>
@@ -97,9 +97,9 @@ public static class UserEndpoints
         return;
       }
 
-      var adminCount = await userService.GetAdminCount();
+      var adminCount = await userService.GetUsersWithRoleCount(AppRoles.Admin);
 
-      if (existingUser.IsAdmin && !request.IsAdmin && adminCount <= 1)
+      if (existingUser.Roles.Contains(AppRoles.Admin) && !request.Roles.Contains(AppRoles.Admin) && adminCount <= 1)
       {
         httpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
         await httpContext.Response.WriteAsJsonAsync(new
@@ -124,7 +124,7 @@ public static class UserEndpoints
       await httpContext.Response.WriteAsJsonAsync(updatedUser);
     })
     .RequireCors("FrontendWriteCors")
-    .RequireAuthorization("AdminOnly")
+    .RequireAuthorization("HasAdminRole")
     .WithName("UpdateUser");
 
     app.MapDelete("/users/{username}", async (HttpContext httpContext, string username) =>
@@ -154,8 +154,8 @@ public static class UserEndpoints
         return;
       }
 
-      var adminCount = await userService.GetAdminCount();
-      if (existingUser.IsAdmin && adminCount <= 1)
+      var adminCount = await userService.GetUsersWithRoleCount(AppRoles.Admin);
+      if (existingUser.Roles.Contains(AppRoles.Admin) && adminCount <= 1)
       {
         httpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
         await httpContext.Response.WriteAsJsonAsync(new
@@ -180,7 +180,7 @@ public static class UserEndpoints
       httpContext.Response.StatusCode = StatusCodes.Status204NoContent;
     })
     .RequireCors("FrontendWriteCors")
-    .RequireAuthorization("AdminOnly")
+    .RequireAuthorization("HasAdminRole")
     .WithName("DeleteUser");
   }
 }

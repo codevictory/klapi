@@ -15,25 +15,32 @@ public class UserService
     await EnsureOpenConnection();
 
     var now = DateTime.UtcNow;
+    var normalizedUsername = admin.Username.Trim().ToLowerInvariant();
 
-    await using var command = _connection.CreateCommand();
-    command.CommandText = @"
-      INSERT INTO Users (username, password, added, lastUpdated, isAdmin, displayName)
-      VALUES (@username, @password, @added, @lastUpdated, @isAdmin, @displayName)
+    await using var upsertCommand = _connection.CreateCommand();
+    upsertCommand.CommandText = @"
+      INSERT INTO Users (username, password, added, lastUpdated, displayName)
+      VALUES (@username, @password, @added, @lastUpdated, @displayName)
       ON CONFLICT(username) DO UPDATE SET
         password = excluded.password,
         lastUpdated = excluded.lastUpdated,
-        isAdmin = 1,
-        displayName = excluded.displayName;";
+        displayName = excluded.displayName;
+      SELECT id FROM Users WHERE username = @username;";
 
-    command.Parameters.AddWithValue("@username", admin.Username.Trim().ToLowerInvariant());
-    command.Parameters.AddWithValue("@password", admin.Password);
-    command.Parameters.AddWithValue("@added", now.ToString("O"));
-    command.Parameters.AddWithValue("@lastUpdated", now.ToString("O"));
-    command.Parameters.AddWithValue("@isAdmin", 1);
-    command.Parameters.AddWithValue("@displayName", admin.DisplayName.Trim());
+    upsertCommand.Parameters.AddWithValue("@username", normalizedUsername);
+    upsertCommand.Parameters.AddWithValue("@password", admin.Password);
+    upsertCommand.Parameters.AddWithValue("@added", now.ToString("O"));
+    upsertCommand.Parameters.AddWithValue("@lastUpdated", now.ToString("O"));
+    upsertCommand.Parameters.AddWithValue("@displayName", admin.DisplayName.Trim());
 
-    await command.ExecuteNonQueryAsync();
+    var userId = Convert.ToInt64(await upsertCommand.ExecuteScalarAsync());
+
+    await using var roleCommand = _connection.CreateCommand();
+    roleCommand.CommandText = @"
+      INSERT OR IGNORE INTO UserRoles (userId, roleName) VALUES (@userId, @roleName);";
+    roleCommand.Parameters.AddWithValue("@userId", userId);
+    roleCommand.Parameters.AddWithValue("@roleName", AppRoles.Admin);
+    await roleCommand.ExecuteNonQueryAsync();
   }
 
   public async Task<AppUser?> Authenticate(string username, string password)
@@ -42,9 +49,12 @@ public class UserService
 
     await using var command = _connection.CreateCommand();
     command.CommandText = @"
-      SELECT id, username, password, added, lastUpdated, isAdmin, displayName
-      FROM Users
-      WHERE username = @username
+      SELECT u.id, u.username, u.password, u.added, u.lastUpdated, u.displayName,
+             GROUP_CONCAT(ur.roleName) AS roles
+      FROM Users u
+      LEFT JOIN UserRoles ur ON ur.userId = u.id
+      WHERE u.username = @username
+      GROUP BY u.id
       LIMIT 1;";
 
     command.Parameters.AddWithValue("@username", username.Trim().ToLowerInvariant());
@@ -71,9 +81,12 @@ public class UserService
 
     await using var command = _connection.CreateCommand();
     command.CommandText = @"
-      SELECT username, added, lastUpdated, isAdmin, displayName
-      FROM Users
-      ORDER BY username ASC;";
+      SELECT u.id, u.username, u.added, u.lastUpdated, u.displayName,
+             GROUP_CONCAT(ur.roleName) AS roles
+      FROM Users u
+      LEFT JOIN UserRoles ur ON ur.userId = u.id
+      GROUP BY u.id
+      ORDER BY u.username ASC;";
 
     await using var reader = await command.ExecuteReaderAsync();
 
@@ -85,8 +98,8 @@ public class UserService
         Username = reader["username"]?.ToString() ?? string.Empty,
         Added = ParseDate(reader["added"]?.ToString()),
         LastUpdated = ParseDate(reader["lastUpdated"]?.ToString()),
-        IsAdmin = ParseBoolean(reader["isAdmin"]),
-        DisplayName = reader["displayName"]?.ToString() ?? string.Empty
+        DisplayName = reader["displayName"]?.ToString() ?? string.Empty,
+        Roles = ParseRoles(reader["roles"]?.ToString())
       });
     }
 
@@ -100,27 +113,37 @@ public class UserService
     var now = DateTime.UtcNow;
     var normalizedUsername = request.Username.Trim().ToLowerInvariant();
 
-    await using var command = _connection.CreateCommand();
-    command.CommandText = @"
-      INSERT INTO Users (username, password, added, lastUpdated, isAdmin, displayName)
-      VALUES (@username, @password, @added, @lastUpdated, @isAdmin, @displayName);";
+    await using var insertCommand = _connection.CreateCommand();
+    insertCommand.CommandText = @"
+      INSERT INTO Users (username, password, added, lastUpdated, displayName)
+      VALUES (@username, @password, @added, @lastUpdated, @displayName);
+      SELECT last_insert_rowid();";
 
-    command.Parameters.AddWithValue("@username", normalizedUsername);
-    command.Parameters.AddWithValue("@password", request.Password);
-    command.Parameters.AddWithValue("@added", now.ToString("O"));
-    command.Parameters.AddWithValue("@lastUpdated", now.ToString("O"));
-    command.Parameters.AddWithValue("@isAdmin", request.IsAdmin ? 1 : 0);
-    command.Parameters.AddWithValue("@displayName", request.DisplayName.Trim());
+    insertCommand.Parameters.AddWithValue("@username", normalizedUsername);
+    insertCommand.Parameters.AddWithValue("@password", request.Password);
+    insertCommand.Parameters.AddWithValue("@added", now.ToString("O"));
+    insertCommand.Parameters.AddWithValue("@lastUpdated", now.ToString("O"));
+    insertCommand.Parameters.AddWithValue("@displayName", request.DisplayName.Trim());
 
-    await command.ExecuteNonQueryAsync();
+    var insertedId = Convert.ToInt64(await insertCommand.ExecuteScalarAsync());
+
+    var validRoles = request.Roles
+      .Select(r => r.Trim().ToLowerInvariant())
+      .Where(r => AppRoles.All.Contains(r))
+      .ToList();
+
+    if (validRoles.Count > 0)
+    {
+      await SetUserRoles(insertedId, validRoles);
+    }
 
     return new AppUserView
     {
       Username = normalizedUsername,
       Added = now,
       LastUpdated = now,
-      IsAdmin = request.IsAdmin,
-      DisplayName = request.DisplayName.Trim()
+      DisplayName = request.DisplayName.Trim(),
+      Roles = validRoles
     };
   }
 
@@ -142,14 +165,12 @@ public class UserService
       UPDATE Users
       SET password = @password,
           lastUpdated = @lastUpdated,
-          isAdmin = @isAdmin,
           displayName = @displayName
       WHERE username = @username;";
 
     command.Parameters.AddWithValue("@username", normalizedUsername);
     command.Parameters.AddWithValue("@password", string.IsNullOrWhiteSpace(request.Password) ? currentUser.Password : request.Password);
     command.Parameters.AddWithValue("@lastUpdated", now.ToString("O"));
-    command.Parameters.AddWithValue("@isAdmin", request.IsAdmin ? 1 : 0);
     command.Parameters.AddWithValue("@displayName", request.DisplayName.Trim());
 
     var affectedRows = await command.ExecuteNonQueryAsync();
@@ -158,13 +179,20 @@ public class UserService
       return null;
     }
 
+    var validRoles = request.Roles
+      .Select(r => r.Trim().ToLowerInvariant())
+      .Where(r => AppRoles.All.Contains(r))
+      .ToList();
+
+    await SetUserRoles(currentUser.Id, validRoles);
+
     return new AppUserView
     {
       Username = normalizedUsername,
       Added = currentUser.Added,
       LastUpdated = now,
-      IsAdmin = request.IsAdmin,
-      DisplayName = request.DisplayName.Trim()
+      DisplayName = request.DisplayName.Trim(),
+      Roles = validRoles
     };
   }
 
@@ -180,12 +208,13 @@ public class UserService
     return affectedRows > 0;
   }
 
-  public async Task<int> GetAdminCount()
+  public async Task<int> GetUsersWithRoleCount(string roleName)
   {
     await EnsureOpenConnection();
 
     await using var command = _connection.CreateCommand();
-    command.CommandText = "SELECT COUNT(*) FROM Users WHERE isAdmin = 1;";
+    command.CommandText = "SELECT COUNT(*) FROM UserRoles WHERE roleName = @roleName;";
+    command.Parameters.AddWithValue("@roleName", roleName.Trim().ToLowerInvariant());
 
     return Convert.ToInt32(await command.ExecuteScalarAsync());
   }
@@ -194,29 +223,61 @@ public class UserService
   {
     await EnsureOpenConnection();
 
-    var user = await GetUserByUsername(username.Trim().ToLowerInvariant());
-    if (user is null)
+    await using var command = _connection.CreateCommand();
+    command.CommandText = @"
+      SELECT u.id, u.username, u.added, u.lastUpdated, u.displayName,
+             GROUP_CONCAT(ur.roleName) AS roles
+      FROM Users u
+      LEFT JOIN UserRoles ur ON ur.userId = u.id
+      WHERE u.username = @username
+      GROUP BY u.id
+      LIMIT 1;";
+
+    command.Parameters.AddWithValue("@username", username.Trim().ToLowerInvariant());
+
+    await using var reader = await command.ExecuteReaderAsync();
+    if (!await reader.ReadAsync())
     {
       return null;
     }
 
     return new AppUserView
     {
-      Username = user.Username,
-      Added = user.Added,
-      LastUpdated = user.LastUpdated,
-      IsAdmin = user.IsAdmin,
-      DisplayName = user.DisplayName
+      Username = reader["username"]?.ToString() ?? string.Empty,
+      Added = ParseDate(reader["added"]?.ToString()),
+      LastUpdated = ParseDate(reader["lastUpdated"]?.ToString()),
+      DisplayName = reader["displayName"]?.ToString() ?? string.Empty,
+      Roles = ParseRoles(reader["roles"]?.ToString())
     };
+  }
+
+  private async Task SetUserRoles(long userId, IReadOnlyList<string> roleNames)
+  {
+    await using var deleteCommand = _connection.CreateCommand();
+    deleteCommand.CommandText = "DELETE FROM UserRoles WHERE userId = @userId;";
+    deleteCommand.Parameters.AddWithValue("@userId", userId);
+    await deleteCommand.ExecuteNonQueryAsync();
+
+    foreach (var roleName in roleNames)
+    {
+      await using var insertCommand = _connection.CreateCommand();
+      insertCommand.CommandText = "INSERT OR IGNORE INTO UserRoles (userId, roleName) VALUES (@userId, @roleName);";
+      insertCommand.Parameters.AddWithValue("@userId", userId);
+      insertCommand.Parameters.AddWithValue("@roleName", roleName);
+      await insertCommand.ExecuteNonQueryAsync();
+    }
   }
 
   private async Task<AppUser?> GetUserByUsername(string username)
   {
     await using var command = _connection.CreateCommand();
     command.CommandText = @"
-      SELECT id, username, password, added, lastUpdated, isAdmin, displayName
-      FROM Users
-      WHERE username = @username
+      SELECT u.id, u.username, u.password, u.added, u.lastUpdated, u.displayName,
+             GROUP_CONCAT(ur.roleName) AS roles
+      FROM Users u
+      LEFT JOIN UserRoles ur ON ur.userId = u.id
+      WHERE u.username = @username
+      GROUP BY u.id
       LIMIT 1;";
 
     command.Parameters.AddWithValue("@username", username);
@@ -239,9 +300,15 @@ public class UserService
       Password = reader["password"]?.ToString() ?? string.Empty,
       Added = ParseDate(reader["added"]?.ToString()),
       LastUpdated = ParseDate(reader["lastUpdated"]?.ToString()),
-      IsAdmin = ParseBoolean(reader["isAdmin"]),
-      DisplayName = reader["displayName"]?.ToString() ?? string.Empty
+      DisplayName = reader["displayName"]?.ToString() ?? string.Empty,
+      Roles = ParseRoles(reader["roles"]?.ToString())
     };
+  }
+
+  private static List<string> ParseRoles(string? value)
+  {
+    if (string.IsNullOrEmpty(value)) return [];
+    return [.. value.Split(',').Where(r => !string.IsNullOrWhiteSpace(r))];
   }
 
   private static DateTime ParseDate(string? value)
@@ -254,24 +321,15 @@ public class UserService
     return DateTime.MinValue;
   }
 
-  private static bool ParseBoolean(object? value)
-  {
-    return value switch
-    {
-      bool boolValue => boolValue,
-      long longValue => longValue == 1,
-      int intValue => intValue == 1,
-      string stringValue when int.TryParse(stringValue, out var parsedInt) => parsedInt == 1,
-      string stringValue when bool.TryParse(stringValue, out var parsedBool) => parsedBool,
-      _ => false
-    };
-  }
-
   private async Task EnsureOpenConnection()
   {
     if (_connection.State != ConnectionState.Open)
     {
       await _connection.OpenAsync();
+
+      await using var pragma = _connection.CreateCommand();
+      pragma.CommandText = "PRAGMA foreign_keys = ON;";
+      await pragma.ExecuteNonQueryAsync();
     }
   }
 }

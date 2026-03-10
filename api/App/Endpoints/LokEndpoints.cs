@@ -2,7 +2,7 @@ public static class LokEndpoints
 {
   public static void MapLokEndpoints(WebApplication app)
   {
-    var createLokOpenHoursEndpoint = app.MapPost("/lok/open-hours", async (HttpContext httpContext) =>
+    app.MapPost("/lok/open-hours", async (HttpContext httpContext) =>
     {
       var lokService = httpContext.RequestServices.GetRequiredService<LokService>();
       var openHours = await httpContext.Request.ReadFromJsonAsync<LokOpenHours>();
@@ -33,12 +33,8 @@ public static class LokEndpoints
       await httpContext.Response.WriteAsJsonAsync(createdOpenHours);
     })
     .RequireCors("FrontendWriteCors")
+    .RequireAuthorization("HasLokRole")
     .WithName("CreateLokOpenHours");
-
-    if (!app.Environment.IsDevelopment())
-    {
-      createLokOpenHoursEndpoint.RequireAuthorization("OpenHoursWrite");
-    }
 
     app.MapGet("/lok/open-hours", async (HttpContext httpContext) =>
     {
@@ -60,7 +56,7 @@ public static class LokEndpoints
     .RequireCors("PublicReadCors")
     .WithName("GetLokOpenHours");
 
-    var deleteLokOpenHoursEndpoint = app.MapDelete("/lok/open-hours/{id:long}", async (HttpContext httpContext, long id) =>
+    app.MapDelete("/lok/open-hours/{id:long}", async (HttpContext httpContext, long id) =>
     {
       var lokService = httpContext.RequestServices.GetRequiredService<LokService>();
       var deleted = await lokService.DeleteOpenHours(id);
@@ -78,14 +74,10 @@ public static class LokEndpoints
       httpContext.Response.StatusCode = StatusCodes.Status204NoContent;
     })
     .RequireCors("FrontendWriteCors")
+    .RequireAuthorization("HasLokRole")
     .WithName("DeleteLokOpenHours");
 
-    if (!app.Environment.IsDevelopment())
-    {
-      deleteLokOpenHoursEndpoint.RequireAuthorization("OpenHoursWrite");
-    }
-
-    var updateLokOpenHoursEndpoint = app.MapPut("/lok/open-hours/{id:long}", async (HttpContext httpContext, long id) =>
+    app.MapPut("/lok/open-hours/{id:long}", async (HttpContext httpContext, long id) =>
     {
       var lokService = httpContext.RequestServices.GetRequiredService<LokService>();
       var openHours = await httpContext.Request.ReadFromJsonAsync<LokOpenHours>();
@@ -125,14 +117,10 @@ public static class LokEndpoints
       await httpContext.Response.WriteAsJsonAsync(updatedOpenHours);
     })
     .RequireCors("FrontendWriteCors")
+    .RequireAuthorization("HasLokRole")
     .WithName("UpdateLokOpenHours");
 
-    if (!app.Environment.IsDevelopment())
-    {
-      updateLokOpenHoursEndpoint.RequireAuthorization("OpenHoursWrite");
-    }
-
-    var setActiveLokOpenHoursEndpoint = app.MapPut("/lok/open-hours/{id:long}/active", async (HttpContext httpContext, long id) =>
+    app.MapPut("/lok/open-hours/{id:long}/active", async (HttpContext httpContext, long id) =>
     {
       var lokService = httpContext.RequestServices.GetRequiredService<LokService>();
       var activated = await lokService.SetActiveOpenHours(id);
@@ -154,11 +142,7 @@ public static class LokEndpoints
       });
     })
     .RequireCors("FrontendWriteCors")
+    .RequireAuthorization("HasLokRole")
     .WithName("SetActiveLokOpenHours");
-
-    if (!app.Environment.IsDevelopment())
-    {
-      setActiveLokOpenHoursEndpoint.RequireAuthorization("OpenHoursWrite");
-    }
   }
 }

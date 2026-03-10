@@ -16,6 +16,11 @@ CREATE TABLE IF NOT EXISTS Users (
   password TEXT NOT NULL,
   added TEXT NOT NULL,
   lastUpdated TEXT NOT NULL,
-  isAdmin INTEGER NOT NULL DEFAULT 0,
   displayName TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS UserRoles (
+  userId INTEGER NOT NULL REFERENCES Users(id) ON DELETE CASCADE,
+  roleName TEXT NOT NULL,
+  PRIMARY KEY (userId, roleName)
 );

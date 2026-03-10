@@ -38,13 +38,13 @@ export default function Login() {
       setSession({
         username: auth.username,
         displayName: auth.displayName,
-        isAdmin: auth.isAdmin,
+        roles: auth.roles,
         token: auth.accessToken,
       });
 
       localStorage.setItem("session-username", auth.username);
       localStorage.setItem("session-display-name", auth.displayName);
-      localStorage.setItem("session-is-admin", auth.isAdmin ? "true" : "false");
+      localStorage.setItem("session-roles", auth.roles.join(","));
       localStorage.setItem("session-token", auth.accessToken);
       setError("");
       navigate("/");

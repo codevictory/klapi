@@ -24,9 +24,9 @@ function AppShell() {
   useEffect(() => {
     const storedUsername = localStorage.getItem("session-username");
     const storedDisplayName = localStorage.getItem("session-display-name");
-    const storedIsAdmin = localStorage.getItem("session-is-admin");
+    const storedRoles = localStorage.getItem("session-roles");
     const storedToken = localStorage.getItem("session-token");
-    if (!storedUsername || !storedDisplayName || !storedToken || !storedIsAdmin) {
+    if (!storedUsername || !storedDisplayName || !storedToken) {
       setSession(null);
       return;
     }
@@ -34,7 +34,7 @@ function AppShell() {
     setSession({
       username: storedUsername,
       displayName: storedDisplayName,
-      isAdmin: storedIsAdmin === "true",
+      roles: (storedRoles ?? "").split(",").filter(Boolean),
       token: storedToken,
     });
   }, [setSession]);
@@ -52,7 +52,7 @@ function AppShell() {
         <Route path="/login" element={<Login />} />
         <Route
           path="/management"
-          element={session?.isAdmin ? <Management /> : <Navigate to="/" replace />}
+          element={session?.roles.includes("admin") ? <Management /> : <Navigate to="/" replace />}
         />
         <Route path="*" element={<NotFound />} />
         <Route path="/index.html" element={<Navigate to="/" replace />} />
@@ -64,7 +64,7 @@ function AppShell() {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_relativeSplatPath: true }}>
       <AppShell />
     </BrowserRouter>
   );

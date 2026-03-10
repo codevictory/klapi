@@ -4,7 +4,7 @@ type AuthTokenResponse = {
   accessToken: string;
   username: string;
   displayName: string;
-  isAdmin: boolean;
+  roles: string[];
   tokenType: string;
   expiresIn: number;
 };
@@ -63,21 +63,21 @@ export type User = {
   username: string;
   added: string;
   lastUpdated: string;
-  isAdmin: boolean;
   displayName: string;
+  roles: string[];
 };
 
 export type CreateUserInput = {
   username: string;
   password: string;
-  isAdmin: boolean;
   displayName: string;
+  roles: string[];
 };
 
 export type UpdateUserInput = {
   password?: string;
-  isAdmin: boolean;
   displayName: string;
+  roles: string[];
 };
 
 export async function queryApiVersion(): Promise<string> {

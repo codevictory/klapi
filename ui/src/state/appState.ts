@@ -6,7 +6,7 @@ export type Language = "fi" | "en";
 export type Session = {
   username: string;
   displayName: string;
-  isAdmin: boolean;
+  roles: string[];
   token: string;
 };
 
