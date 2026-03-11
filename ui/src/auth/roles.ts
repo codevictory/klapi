@@ -7,7 +7,10 @@ export const APP_ROLES = {
 
 export type AppRole = (typeof APP_ROLES)[keyof typeof APP_ROLES];
 
-export const hasAnyRole = (session: Session | null, roles: readonly AppRole[]): boolean => {
+export const hasAnyRole = (
+  session: Session | null,
+  roles: readonly AppRole[],
+): boolean => {
   if (!session || roles.length === 0) {
     return false;
   }
@@ -15,7 +18,10 @@ export const hasAnyRole = (session: Session | null, roles: readonly AppRole[]): 
   return roles.some((role) => session.roles.includes(role));
 };
 
-export const hasAllRoles = (session: Session | null, roles: readonly AppRole[]): boolean => {
+export const hasAllRoles = (
+  session: Session | null,
+  roles: readonly AppRole[],
+): boolean => {
   if (!session || roles.length === 0) {
     return false;
   }
