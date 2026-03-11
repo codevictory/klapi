@@ -239,18 +239,6 @@ export default function OpenHoursForm() {
     }
   };
 
-  const tooltipText = (version: LokOpenHours) =>
-    [
-      version.name,
-      version.paragraph1,
-      version.paragraph2,
-      version.paragraph3,
-      version.paragraph4,
-      version.kitchenNotice,
-    ]
-      .filter(Boolean)
-      .join("\n");
-
   const nameRequired = useMemo(() => form.name.trim().length === 0, [form.name]);
 
   return (
@@ -260,8 +248,8 @@ export default function OpenHoursForm() {
       <div className="mt-4">
         <div
           className={`transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${!isEditing
-              ? "max-h-[1200px] translate-y-0 opacity-100"
-              : "pointer-events-none max-h-0 -translate-y-3 overflow-hidden opacity-0"
+            ? "max-h-[1200px] translate-y-0 opacity-100"
+            : "pointer-events-none max-h-0 -translate-y-3 overflow-hidden opacity-0"
             }`}
         >
           <div className="mb-3 flex justify-end">
@@ -283,6 +271,13 @@ export default function OpenHoursForm() {
                 const active = version.isActive;
                 const deleting = deletingId === versionId;
                 const settingActive = activatingId === versionId;
+                const contentLines = [
+                  version.paragraph1,
+                  version.paragraph2,
+                  version.paragraph3,
+                  version.paragraph4,
+                  version.kitchenNotice,
+                ].filter((line) => line.trim().length > 0);
 
                 return (
                   <article
@@ -295,7 +290,7 @@ export default function OpenHoursForm() {
                       } ${deleting ? "-translate-y-1 scale-90 opacity-0" : ""} ${settingActive && !active ? "opacity-80" : ""
                       }`}
                   >
-                    <div className="mb-2 flex items-center justify-between gap-2" title={tooltipText(version)}>
+                    <div className="mb-2 flex items-center justify-between gap-2">
                       <p className="truncate font-medium text-[#4C250E]">
                         {version.name || t("home.openHours.latest")}
                       </p>
@@ -305,6 +300,16 @@ export default function OpenHoursForm() {
                         </span>
                       )}
                     </div>
+
+                    {contentLines.length > 0 && (
+                      <div className="mb-3 space-y-1 text-xs text-[#70421E]">
+                        {contentLines.map((line, index) => (
+                          <p key={`${version.id}-${index}`} className="line-clamp-2">
+                            {line}
+                          </p>
+                        ))}
+                      </div>
+                    )}
 
                     <div className="flex flex-wrap gap-2">
                       <button
@@ -341,8 +346,8 @@ export default function OpenHoursForm() {
         <form
           onSubmit={submitForm}
           className={`space-y-3 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${isEditing
-              ? "max-h-[1600px] translate-y-0 opacity-100"
-              : "pointer-events-none max-h-0 translate-y-3 overflow-hidden opacity-0"
+            ? "max-h-[1600px] translate-y-0 opacity-100"
+            : "pointer-events-none max-h-0 translate-y-3 overflow-hidden opacity-0"
             }`}
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
