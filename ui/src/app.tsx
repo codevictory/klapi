@@ -8,6 +8,7 @@ import Login from "~/routes/login";
 import Management from "~/routes/management";
 import NotFound from "~/routes/[...404]";
 import Toasts from "~/components/Toasts";
+import { APP_ROLES, hasAnyRole } from "~/auth/roles";
 import { initializeLanguage, useLanguage } from "~/i18n";
 import { sessionAtom } from "~/state/appState";
 import "./app.css";
@@ -52,7 +53,7 @@ function AppShell() {
         <Route path="/login" element={<Login />} />
         <Route
           path="/management"
-          element={session?.roles.includes("admin") ? <Management /> : <Navigate to="/" replace />}
+          element={hasAnyRole(session, [APP_ROLES.admin]) ? <Management /> : <Navigate to="/" replace />}
         />
         <Route path="*" element={<NotFound />} />
         <Route path="/index.html" element={<Navigate to="/" replace />} />

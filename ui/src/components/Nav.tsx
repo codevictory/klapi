@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useRecoilState } from "recoil";
+import { APP_ROLES, hasAnyRole } from "~/auth/roles";
 import { sessionAtom } from "~/state/appState";
 import { useLanguage, useT } from "~/i18n";
 
@@ -32,7 +33,7 @@ export default function Nav() {
         <div className="order-2 sm:order-1 flex items-center justify-center sm:justify-start">
           <Link to="/" className={linkClass("/")}>{t("nav.home")}</Link>
           <Link to="/about" className={linkClass("/about")}>{t("nav.about")}</Link>
-          {session?.roles.includes("admin") ? (
+          {hasAnyRole(session, [APP_ROLES.admin]) ? (
             <Link to="/management" className={linkClass("/management")}>{t("nav.management")}</Link>
           ) : null}
         </div>
