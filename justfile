@@ -33,7 +33,10 @@ api-test:
 	dotnet test {{api_solution}}
 
 api-publish:
-	dotnet publish {{api_project}} -c Release
+	dotnet publish {{api_project}} -c Release -o {{root_dir}}/api/publish
+
+deploy-new-version:
+	{{root_dir}}/scripts/deploy-api.sh
 
 ui-install:
 	cd {{ui_dir}} && bun install
