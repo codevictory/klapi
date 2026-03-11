@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SESSION_NAME="klapi"
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 API_DIR="$ROOT_DIR/api"
 UI_DIR="$ROOT_DIR/ui"
 RESTART=false

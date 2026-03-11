@@ -12,7 +12,7 @@ default:
 	@just --list
 
 dev:
-	./start.sh
+	{{root_dir}}/scripts/start.sh
 
 api-restore:
 	dotnet restore {{api_project}}
