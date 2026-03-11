@@ -1,7 +1,7 @@
 import { atom } from "recoil";
 import type { LokOpenHours } from "~/api";
 
-export type Language = "fi" | "en";
+export type Language = "fi" | "en" | "sk";
 
 export type Session = {
   username: string;

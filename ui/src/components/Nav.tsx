@@ -62,6 +62,16 @@ export default function Nav() {
             >
               {t("nav.language.en")}
             </button>
+            <button
+              type="button"
+              onClick={() => setLanguage("sk")}
+              className={`rounded px-2 py-1 text-xs ${language === "sk"
+                ? "bg-[#E3A977] text-[#4C250E]"
+                : "text-[#F5D1A9] hover:text-[#FFF7EE]"
+                }`}
+            >
+              {t("nav.language.sk")}
+            </button>
           </div>
 
           {session ? (
