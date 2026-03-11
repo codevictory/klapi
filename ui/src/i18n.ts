@@ -44,6 +44,10 @@ const translations = {
     "home.openHours.saved": "New version saved",
     "home.openHours.updated": "Version updated",
     "home.openHours.deleted": "Version deleted",
+    "home.openHours.deleting": "Deleting...",
+    "home.openHours.deleteConfirmTitle": "Delete version?",
+    "home.openHours.deleteConfirmMessage": "This action cannot be undone.",
+    "home.openHours.deleteConfirmAction": "Delete version",
     "about.title": "About",
     "about.description":
       "Livonsaaren Tietokonepaja is a local project providing IT services for our dear archipelago.",
@@ -125,6 +129,10 @@ const translations = {
     "home.openHours.saved": "Uusi versio tallennettu",
     "home.openHours.updated": "Versio päivitetty",
     "home.openHours.deleted": "Versio poistettu",
+    "home.openHours.deleting": "Poistetaan...",
+    "home.openHours.deleteConfirmTitle": "Poistetaanko versio?",
+    "home.openHours.deleteConfirmMessage": "Tätä toimintoa ei voi perua.",
+    "home.openHours.deleteConfirmAction": "Poista versio",
     "about.title": "Tietoja",
     "about.description":
       "Livonsaaren Tietokonepaja on paikallisprojekti, joka tuottaa IT-palveluita rakkaalle lähisaaristollemme.",
@@ -207,6 +215,11 @@ const translations = {
     "home.openHours.saved": "Nová verzia uložená",
     "home.openHours.updated": "Verzia bola aktualizovaná",
     "home.openHours.deleted": "Verzia bola odstránená",
+    "home.openHours.deleting": "Odstraňuje sa...",
+    "home.openHours.deleteConfirmTitle": "Odstrániť verziu?",
+    "home.openHours.deleteConfirmMessage":
+      "Túto akciu nie je možné vrátiť späť.",
+    "home.openHours.deleteConfirmAction": "Odstrániť verziu",
     "about.title": "O aplikácii",
     "about.description":
       "Livonsaaren Tietokonepaja je lokálny projekt poskytujúci IT služby pre naše milované súostrovie.",

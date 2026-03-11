@@ -8,6 +8,7 @@ import {
   updateLokOpenHours,
   type LokOpenHours,
 } from "~/api";
+import ConfirmDialog from "~/components/ConfirmDialog";
 import { useT } from "~/i18n";
 import { openHoursAtom, toastsAtom, type Toast } from "~/state/appState";
 
@@ -38,6 +39,7 @@ export default function OpenHoursForm() {
   const [isEditing, setIsEditing] = useState(false);
   const [editingVersionId, setEditingVersionId] = useState("");
   const [deletingId, setDeletingId] = useState("");
+  const [confirmDeleteVersion, setConfirmDeleteVersion] = useState<LokOpenHours | null>(null);
   const [activatingId, setActivatingId] = useState("");
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -217,6 +219,21 @@ export default function OpenHoursForm() {
     }
   };
 
+  const askDeleteConfirmation = (version: LokOpenHours) => {
+    setConfirmDeleteVersion(version);
+  };
+
+  const cancelDeleteConfirmation = () => {
+    if (deletingId) return;
+    setConfirmDeleteVersion(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!confirmDeleteVersion) return;
+    await onDelete(confirmDeleteVersion);
+    setConfirmDeleteVersion(null);
+  };
+
   const onSetActive = async (version: LokOpenHours) => {
     if (version.isActive) return;
 
@@ -328,7 +345,7 @@ export default function OpenHoursForm() {
                         disabled={active || deleting}
                         onClick={(event) => {
                           event.stopPropagation();
-                          void onDelete(version);
+                          askDeleteConfirmation(version);
                         }}
                         className={`rounded-md border border-[#8E4F24] bg-[#EED5B8] px-3 py-1.5 text-sm text-[#70421E] disabled:cursor-not-allowed disabled:opacity-50 ${!active ? "hover:bg-[#E3A977]" : ""
                           }`}
@@ -416,6 +433,21 @@ export default function OpenHoursForm() {
           </div>
         </form>
       </div>
+
+      <ConfirmDialog
+        open={Boolean(confirmDeleteVersion)}
+        title={t("home.openHours.deleteConfirmTitle")}
+        description={t("home.openHours.deleteConfirmMessage")}
+        contextText={confirmDeleteVersion?.name || t("home.openHours.latest")}
+        cancelLabel={t("home.openHours.cancel")}
+        confirmLabel={t("home.openHours.deleteConfirmAction")}
+        busy={Boolean(deletingId)}
+        busyLabel={t("home.openHours.deleting")}
+        onCancel={cancelDeleteConfirmation}
+        onConfirm={() => {
+          void confirmDelete();
+        }}
+      />
     </section>
   );
 }
