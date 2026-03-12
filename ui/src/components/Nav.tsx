@@ -15,7 +15,8 @@ export default function Nav() {
     setSession(null);
     localStorage.removeItem("session-username");
     localStorage.removeItem("session-display-name");
-    localStorage.removeItem("session-is-admin");
+    localStorage.removeItem("session-preferred-language");
+    localStorage.removeItem("session-roles");
     localStorage.removeItem("session-token");
     navigate("/login");
   };

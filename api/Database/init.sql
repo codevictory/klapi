@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS Users (
   password TEXT NOT NULL,
   added TEXT NOT NULL,
   lastUpdated TEXT NOT NULL,
-  displayName TEXT NOT NULL DEFAULT ''
+  displayName TEXT NOT NULL DEFAULT '',
+  preferredLanguage TEXT NOT NULL DEFAULT 'fi'
 );
 
 CREATE TABLE IF NOT EXISTS UserRoles (

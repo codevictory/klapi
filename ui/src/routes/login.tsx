@@ -2,11 +2,12 @@ import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRecoilState } from "recoil";
 import { requestAuthToken } from "~/api";
-import { useT } from "~/i18n";
+import { normalizeLanguage, useLanguage, useT } from "~/i18n";
 import { sessionAtom } from "~/state/appState";
 
 export default function Login() {
   const t = useT();
+  const { setLanguage } = useLanguage();
   const navigate = useNavigate();
   const [session, setSession] = useRecoilState(sessionAtom);
   const [username, setUsername] = useState("");
@@ -38,12 +39,17 @@ export default function Login() {
       setSession({
         username: auth.username,
         displayName: auth.displayName,
+        preferredLanguage: auth.preferredLanguage,
         roles: auth.roles,
         token: auth.accessToken,
       });
 
+      const preferredLanguage = normalizeLanguage(auth.preferredLanguage);
+      setLanguage(preferredLanguage);
+
       localStorage.setItem("session-username", auth.username);
       localStorage.setItem("session-display-name", auth.displayName);
+      localStorage.setItem("session-preferred-language", preferredLanguage);
       localStorage.setItem("session-roles", auth.roles.join(","));
       localStorage.setItem("session-token", auth.accessToken);
       setError("");

@@ -6,6 +6,7 @@ export type Language = "fi" | "en" | "sk";
 export type Session = {
   username: string;
   displayName: string;
+  preferredLanguage: Language;
   roles: string[];
   token: string;
 };
@@ -19,7 +20,7 @@ export type Toast = {
 
 export const languageAtom = atom<Language>({
   key: "languageAtom",
-  default: "en",
+  default: "fi",
 });
 
 export const sessionAtom = atom<Session | null>({

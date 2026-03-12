@@ -241,6 +241,22 @@ public class Program
                         SELECT id, 'admin' FROM Users WHERE isAdmin = 1;";
                     command.ExecuteNonQuery();
                 }
+
+                // Migration: add preferredLanguage to Users if missing and backfill with Finnish
+                command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Users') WHERE name = 'preferredLanguage';";
+                var usersHasPreferredLanguage = Convert.ToInt32(command.ExecuteScalar()) > 0;
+
+                if (!usersHasPreferredLanguage)
+                {
+                    command.CommandText = "ALTER TABLE Users ADD COLUMN preferredLanguage TEXT NOT NULL DEFAULT 'fi';";
+                    command.ExecuteNonQuery();
+                }
+
+                command.CommandText = @"
+                    UPDATE Users
+                    SET preferredLanguage = 'fi'
+                    WHERE preferredLanguage IS NULL OR TRIM(preferredLanguage) = '';";
+                command.ExecuteNonQuery();
             }
         }
 

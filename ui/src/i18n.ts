@@ -71,6 +71,10 @@ const translations = {
     "management.username": "Username",
     "management.password": "Password",
     "management.displayName": "Display name",
+    "management.preferredLanguage": "Preferred language",
+    "management.language.fi": "Finnish",
+    "management.language.en": "English",
+    "management.language.sk": "Slovak",
     "management.added": "Added",
     "management.updated": "Last updated",
     "management.loading": "Loading users...",
@@ -156,6 +160,10 @@ const translations = {
     "management.username": "Käyttäjätunnus",
     "management.password": "Salasana",
     "management.displayName": "Näyttönimi",
+    "management.preferredLanguage": "Ensisijainen kieli",
+    "management.language.fi": "Suomi",
+    "management.language.en": "Englanti",
+    "management.language.sk": "Slovakki",
     "management.added": "Lisätty",
     "management.updated": "Viimeksi päivitetty",
     "management.loading": "Ladataan käyttäjiä...",
@@ -243,6 +251,10 @@ const translations = {
     "management.username": "Používateľské meno",
     "management.password": "Heslo",
     "management.displayName": "Zobrazované meno",
+    "management.preferredLanguage": "Preferovaný jazyk",
+    "management.language.fi": "Fínčina",
+    "management.language.en": "Angličtina",
+    "management.language.sk": "Slovenčina",
     "management.added": "Pridané",
     "management.updated": "Naposledy aktualizované",
     "management.loading": "Načítavajú sa používatelia...",
@@ -268,11 +280,19 @@ const translations = {
 export type TranslationKey = keyof typeof translations.en;
 
 export const normalizeLanguage = (value: unknown): Language =>
-  value === "fi" || value === "sk" ? value : "en";
+  value === "en" || value === "sk" ? value : "fi";
 
-export const initializeLanguage = (setLanguage: (lang: Language) => void) => {
-  const stored = normalizeLanguage(localStorage.getItem(STORAGE_KEY));
-  setLanguage(stored);
+export const initializeLanguage = (
+  setLanguage: (lang: Language) => void,
+  fallbackLanguage?: Language,
+) => {
+  const storedValue = localStorage.getItem(STORAGE_KEY);
+  if (storedValue !== null) {
+    setLanguage(normalizeLanguage(storedValue));
+    return;
+  }
+
+  setLanguage(normalizeLanguage(fallbackLanguage));
 };
 
 export const useLanguage = () => {

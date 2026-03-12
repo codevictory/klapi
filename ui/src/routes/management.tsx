@@ -5,6 +5,7 @@ import { useT } from "~/i18n";
 const AVAILABLE_ROLES = ["lok", "admin"];
 
 type Mode = "create" | "edit";
+type LanguageOption = "fi" | "en" | "sk";
 
 export default function Management() {
   const t = useT();
@@ -13,6 +14,7 @@ export default function Management() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [preferredLanguage, setPreferredLanguage] = useState<LanguageOption>("fi");
   const [selectedRoles, setSelectedRoles] = useState<Set<string>>(new Set());
   const [selectedUsername, setSelectedUsername] = useState("");
   const [error, setError] = useState("");
@@ -44,6 +46,7 @@ export default function Management() {
     setUsername("");
     setPassword("");
     setDisplayName("");
+    setPreferredLanguage("fi");
     setSelectedRoles(new Set());
     setSelectedUsername("");
   };
@@ -53,6 +56,7 @@ export default function Management() {
     setUsername(user.username);
     setPassword("");
     setDisplayName(user.displayName);
+    setPreferredLanguage(user.preferredLanguage);
     setSelectedRoles(new Set(user.roles));
     setSelectedUsername(user.username);
     setError("");
@@ -81,12 +85,14 @@ export default function Management() {
           username: username.trim(),
           password: password,
           displayName: displayName.trim(),
+          preferredLanguage,
           roles: [...selectedRoles],
         });
       } else {
         await updateUser(selectedUsername, {
           password: password.trim() ? password : undefined,
           displayName: displayName.trim(),
+          preferredLanguage,
           roles: [...selectedRoles],
         });
       }
@@ -153,6 +159,20 @@ export default function Management() {
           />
         </label>
 
+        <label htmlFor="management-language" className="block text-left">
+          {t("management.preferredLanguage")}
+          <select
+            id="management-language"
+            value={preferredLanguage}
+            onChange={(event) => setPreferredLanguage(event.target.value as LanguageOption)}
+            className="mt-1 block w-full rounded-md border border-[#C99763] bg-[#FFF7EE] px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#A56C38]"
+          >
+            <option value="fi">{t("management.language.fi")}</option>
+            <option value="en">{t("management.language.en")}</option>
+            <option value="sk">{t("management.language.sk")}</option>
+          </select>
+        </label>
+
         <div className="block text-left">
           <span className="block">{t("management.rolesAssign")}</span>
           <div className="mt-1 flex flex-wrap gap-3">
@@ -209,6 +229,9 @@ export default function Management() {
                     </div>
                     <div className="text-xs text-[#8E4F24]">
                       {t("management.updated")}: {new Date(user.lastUpdated).toLocaleString()}
+                    </div>
+                    <div className="text-xs text-[#8E4F24]">
+                      {t("management.preferredLanguage")}: {t(`management.language.${user.preferredLanguage}` as "management.language.fi" | "management.language.en" | "management.language.sk")}
                     </div>
                     {user.roles.length > 0 ? (
                       <div className="mt-1 flex flex-wrap gap-1">

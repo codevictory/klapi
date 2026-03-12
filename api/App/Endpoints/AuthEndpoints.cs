@@ -53,6 +53,7 @@ public static class AuthEndpoints
         new(ClaimTypes.Name, authenticatedUser.Username),
         new("username", authenticatedUser.Username),
         new("display_name", authenticatedUser.DisplayName),
+        new("preferred_language", authenticatedUser.PreferredLanguage),
       };
 
       foreach (var role in authenticatedUser.Roles)
@@ -74,6 +75,7 @@ public static class AuthEndpoints
         AccessToken = tokenValue,
         Username = authenticatedUser.Username,
         DisplayName = authenticatedUser.DisplayName,
+        PreferredLanguage = authenticatedUser.PreferredLanguage,
         Roles = authenticatedUser.Roles,
         TokenType = "Bearer",
         ExpiresIn = 43200

@@ -19,12 +19,14 @@ function AppShell() {
   const setSession = useSetRecoilState(sessionAtom);
 
   useEffect(() => {
-    initializeLanguage(setLanguage);
+    const storedPreferredLanguage = localStorage.getItem("session-preferred-language");
+    initializeLanguage(setLanguage, storedPreferredLanguage === "en" || storedPreferredLanguage === "sk" ? storedPreferredLanguage : "fi");
   }, [setLanguage]);
 
   useEffect(() => {
     const storedUsername = localStorage.getItem("session-username");
     const storedDisplayName = localStorage.getItem("session-display-name");
+    const storedPreferredLanguage = localStorage.getItem("session-preferred-language");
     const storedRoles = localStorage.getItem("session-roles");
     const storedToken = localStorage.getItem("session-token");
     if (!storedUsername || !storedDisplayName || !storedToken) {
@@ -35,6 +37,7 @@ function AppShell() {
     setSession({
       username: storedUsername,
       displayName: storedDisplayName,
+      preferredLanguage: storedPreferredLanguage === "en" || storedPreferredLanguage === "sk" ? storedPreferredLanguage : "fi",
       roles: (storedRoles ?? "").split(",").filter(Boolean),
       token: storedToken,
     });

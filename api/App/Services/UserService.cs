@@ -19,12 +19,13 @@ public class UserService
 
     await using var upsertCommand = _connection.CreateCommand();
     upsertCommand.CommandText = @"
-      INSERT INTO Users (username, password, added, lastUpdated, displayName)
-      VALUES (@username, @password, @added, @lastUpdated, @displayName)
+      INSERT INTO Users (username, password, added, lastUpdated, displayName, preferredLanguage)
+      VALUES (@username, @password, @added, @lastUpdated, @displayName, @preferredLanguage)
       ON CONFLICT(username) DO UPDATE SET
         password = excluded.password,
         lastUpdated = excluded.lastUpdated,
-        displayName = excluded.displayName;
+        displayName = excluded.displayName,
+        preferredLanguage = excluded.preferredLanguage;
       SELECT id FROM Users WHERE username = @username;";
 
     upsertCommand.Parameters.AddWithValue("@username", normalizedUsername);
@@ -32,6 +33,7 @@ public class UserService
     upsertCommand.Parameters.AddWithValue("@added", now.ToString("O"));
     upsertCommand.Parameters.AddWithValue("@lastUpdated", now.ToString("O"));
     upsertCommand.Parameters.AddWithValue("@displayName", admin.DisplayName.Trim());
+    upsertCommand.Parameters.AddWithValue("@preferredLanguage", AppLanguages.Finnish);
 
     var userId = Convert.ToInt64(await upsertCommand.ExecuteScalarAsync());
 
@@ -49,7 +51,7 @@ public class UserService
 
     await using var command = _connection.CreateCommand();
     command.CommandText = @"
-      SELECT u.id, u.username, u.password, u.added, u.lastUpdated, u.displayName,
+      SELECT u.id, u.username, u.password, u.added, u.lastUpdated, u.displayName, u.preferredLanguage,
              GROUP_CONCAT(ur.roleName) AS roles
       FROM Users u
       LEFT JOIN UserRoles ur ON ur.userId = u.id
@@ -81,7 +83,7 @@ public class UserService
 
     await using var command = _connection.CreateCommand();
     command.CommandText = @"
-      SELECT u.id, u.username, u.added, u.lastUpdated, u.displayName,
+      SELECT u.id, u.username, u.added, u.lastUpdated, u.displayName, u.preferredLanguage,
              GROUP_CONCAT(ur.roleName) AS roles
       FROM Users u
       LEFT JOIN UserRoles ur ON ur.userId = u.id
@@ -99,6 +101,7 @@ public class UserService
         Added = ParseDate(reader["added"]?.ToString()),
         LastUpdated = ParseDate(reader["lastUpdated"]?.ToString()),
         DisplayName = reader["displayName"]?.ToString() ?? string.Empty,
+        PreferredLanguage = AppLanguages.NormalizeOrDefault(reader["preferredLanguage"]?.ToString()),
         Roles = ParseRoles(reader["roles"]?.ToString())
       });
     }
@@ -112,11 +115,12 @@ public class UserService
 
     var now = DateTime.UtcNow;
     var normalizedUsername = request.Username.Trim().ToLowerInvariant();
+    var preferredLanguage = AppLanguages.NormalizeOrDefault(request.PreferredLanguage);
 
     await using var insertCommand = _connection.CreateCommand();
     insertCommand.CommandText = @"
-      INSERT INTO Users (username, password, added, lastUpdated, displayName)
-      VALUES (@username, @password, @added, @lastUpdated, @displayName);
+      INSERT INTO Users (username, password, added, lastUpdated, displayName, preferredLanguage)
+      VALUES (@username, @password, @added, @lastUpdated, @displayName, @preferredLanguage);
       SELECT last_insert_rowid();";
 
     insertCommand.Parameters.AddWithValue("@username", normalizedUsername);
@@ -124,6 +128,7 @@ public class UserService
     insertCommand.Parameters.AddWithValue("@added", now.ToString("O"));
     insertCommand.Parameters.AddWithValue("@lastUpdated", now.ToString("O"));
     insertCommand.Parameters.AddWithValue("@displayName", request.DisplayName.Trim());
+    insertCommand.Parameters.AddWithValue("@preferredLanguage", preferredLanguage);
 
     var insertedId = Convert.ToInt64(await insertCommand.ExecuteScalarAsync());
 
@@ -143,6 +148,7 @@ public class UserService
       Added = now,
       LastUpdated = now,
       DisplayName = request.DisplayName.Trim(),
+      PreferredLanguage = preferredLanguage,
       Roles = validRoles
     };
   }
@@ -153,6 +159,7 @@ public class UserService
 
     var normalizedUsername = username.Trim().ToLowerInvariant();
     var now = DateTime.UtcNow;
+    var preferredLanguage = AppLanguages.NormalizeOrDefault(request.PreferredLanguage);
 
     var currentUser = await GetUserByUsername(normalizedUsername);
     if (currentUser is null)
@@ -165,13 +172,15 @@ public class UserService
       UPDATE Users
       SET password = @password,
           lastUpdated = @lastUpdated,
-          displayName = @displayName
+          displayName = @displayName,
+          preferredLanguage = @preferredLanguage
       WHERE username = @username;";
 
     command.Parameters.AddWithValue("@username", normalizedUsername);
     command.Parameters.AddWithValue("@password", string.IsNullOrWhiteSpace(request.Password) ? currentUser.Password : request.Password);
     command.Parameters.AddWithValue("@lastUpdated", now.ToString("O"));
     command.Parameters.AddWithValue("@displayName", request.DisplayName.Trim());
+    command.Parameters.AddWithValue("@preferredLanguage", preferredLanguage);
 
     var affectedRows = await command.ExecuteNonQueryAsync();
     if (affectedRows == 0)
@@ -192,6 +201,7 @@ public class UserService
       Added = currentUser.Added,
       LastUpdated = now,
       DisplayName = request.DisplayName.Trim(),
+      PreferredLanguage = preferredLanguage,
       Roles = validRoles
     };
   }
@@ -225,7 +235,7 @@ public class UserService
 
     await using var command = _connection.CreateCommand();
     command.CommandText = @"
-      SELECT u.id, u.username, u.added, u.lastUpdated, u.displayName,
+      SELECT u.id, u.username, u.added, u.lastUpdated, u.displayName, u.preferredLanguage,
              GROUP_CONCAT(ur.roleName) AS roles
       FROM Users u
       LEFT JOIN UserRoles ur ON ur.userId = u.id
@@ -247,6 +257,7 @@ public class UserService
       Added = ParseDate(reader["added"]?.ToString()),
       LastUpdated = ParseDate(reader["lastUpdated"]?.ToString()),
       DisplayName = reader["displayName"]?.ToString() ?? string.Empty,
+      PreferredLanguage = AppLanguages.NormalizeOrDefault(reader["preferredLanguage"]?.ToString()),
       Roles = ParseRoles(reader["roles"]?.ToString())
     };
   }
@@ -272,7 +283,7 @@ public class UserService
   {
     await using var command = _connection.CreateCommand();
     command.CommandText = @"
-      SELECT u.id, u.username, u.password, u.added, u.lastUpdated, u.displayName,
+      SELECT u.id, u.username, u.password, u.added, u.lastUpdated, u.displayName, u.preferredLanguage,
              GROUP_CONCAT(ur.roleName) AS roles
       FROM Users u
       LEFT JOIN UserRoles ur ON ur.userId = u.id
@@ -301,6 +312,7 @@ public class UserService
       Added = ParseDate(reader["added"]?.ToString()),
       LastUpdated = ParseDate(reader["lastUpdated"]?.ToString()),
       DisplayName = reader["displayName"]?.ToString() ?? string.Empty,
+      PreferredLanguage = AppLanguages.NormalizeOrDefault(reader["preferredLanguage"]?.ToString()),
       Roles = ParseRoles(reader["roles"]?.ToString())
     };
   }

@@ -212,8 +212,9 @@ public class ProductionAuthTests(ProductionApiTestFactory factory) : IClassFixtu
     {
       username = "editor",
       password = "editorpass",
-      isAdmin = false,
-      displayName = "Editor User"
+      displayName = "Editor User",
+      preferredLanguage = "fi",
+      roles = Array.Empty<string>()
     });
 
     Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
@@ -227,14 +228,16 @@ public class ProductionAuthTests(ProductionApiTestFactory factory) : IClassFixtu
     var updateResponse = await _client.PutAsJsonAsync("/users/editor", new
     {
       password = "editorpass2",
-      isAdmin = true,
-      displayName = "Editor Admin"
+      displayName = "Editor Admin",
+      preferredLanguage = "en",
+      roles = new[] { "admin" }
     });
 
     Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
     var updatedUser = await updateResponse.Content.ReadFromJsonAsync<UserDto>();
     Assert.NotNull(updatedUser);
-    Assert.True(updatedUser.IsAdmin);
+    Assert.Contains("admin", updatedUser.Roles);
+    Assert.Equal("en", updatedUser.PreferredLanguage);
     Assert.Equal("Editor Admin", updatedUser.DisplayName);
 
     var deleteResponse = await _client.DeleteAsync("/users/editor");
@@ -332,7 +335,9 @@ public class AuthTokenDto
 
   public string DisplayName { get; set; } = string.Empty;
 
-  public bool IsAdmin { get; set; }
+  public string PreferredLanguage { get; set; } = string.Empty;
+
+  public List<string> Roles { get; set; } = [];
 
   public string TokenType { get; set; } = string.Empty;
 
@@ -347,7 +352,9 @@ public class UserDto
 
   public DateTime LastUpdated { get; set; }
 
-  public bool IsAdmin { get; set; }
-
   public string DisplayName { get; set; } = string.Empty;
+
+  public string PreferredLanguage { get; set; } = string.Empty;
+
+  public List<string> Roles { get; set; } = [];
 }

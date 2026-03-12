@@ -6,6 +6,23 @@ public static class AppRoles
   public static readonly IReadOnlyList<string> All = [Lok, Admin];
 }
 
+public static class AppLanguages
+{
+  public const string Finnish = "fi";
+  public const string English = "en";
+  public const string Slovak = "sk";
+
+  public static readonly IReadOnlyList<string> All = [Finnish, English, Slovak];
+
+  public static string NormalizeOrDefault(string? language)
+  {
+    var normalized = language?.Trim().ToLowerInvariant();
+    return !string.IsNullOrWhiteSpace(normalized) && All.Contains(normalized)
+      ? normalized
+      : Finnish;
+  }
+}
+
 public class AppUser
 {
   public long Id { get; set; }
@@ -20,6 +37,8 @@ public class AppUser
 
   public string DisplayName { get; set; } = string.Empty;
 
+  public string PreferredLanguage { get; set; } = AppLanguages.Finnish;
+
   public List<string> Roles { get; set; } = [];
 }
 
@@ -33,6 +52,8 @@ public class AppUserView
 
   public string DisplayName { get; set; } = string.Empty;
 
+  public string PreferredLanguage { get; set; } = AppLanguages.Finnish;
+
   public List<string> Roles { get; set; } = [];
 }
 
@@ -44,6 +65,8 @@ public class AppUserCreateRequest
 
   public string DisplayName { get; set; } = string.Empty;
 
+  public string PreferredLanguage { get; set; } = AppLanguages.Finnish;
+
   public List<string> Roles { get; set; } = [];
 }
 
@@ -52,6 +75,8 @@ public class AppUserUpdateRequest
   public string? Password { get; set; }
 
   public string DisplayName { get; set; } = string.Empty;
+
+  public string PreferredLanguage { get; set; } = AppLanguages.Finnish;
 
   public List<string> Roles { get; set; } = [];
 }

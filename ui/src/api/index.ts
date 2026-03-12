@@ -4,6 +4,7 @@ type AuthTokenResponse = {
   accessToken: string;
   username: string;
   displayName: string;
+  preferredLanguage: "fi" | "en" | "sk";
   roles: string[];
   tokenType: string;
   expiresIn: number;
@@ -64,6 +65,7 @@ export type User = {
   added: string;
   lastUpdated: string;
   displayName: string;
+  preferredLanguage: "fi" | "en" | "sk";
   roles: string[];
 };
 
@@ -71,12 +73,14 @@ export type CreateUserInput = {
   username: string;
   password: string;
   displayName: string;
+  preferredLanguage: "fi" | "en" | "sk";
   roles: string[];
 };
 
 export type UpdateUserInput = {
   password?: string;
   displayName: string;
+  preferredLanguage: "fi" | "en" | "sk";
   roles: string[];
 };
 
