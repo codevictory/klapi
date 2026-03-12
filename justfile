@@ -35,7 +35,7 @@ api-test:
 api-publish:
 	dotnet publish {{api_project}} -c Release -o {{root_dir}}/api/publish
 
-deploy-new-version:
+deploy:
 	{{root_dir}}/scripts/deploy.sh
 
 ui-install:
