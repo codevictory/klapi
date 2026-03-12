@@ -14,6 +14,9 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    allowedHosts: ["klapi.tietokonepaja.fi"],
+  },
   resolve: {
     alias: {
       "~": path.resolve(__dirname, "./src"),
