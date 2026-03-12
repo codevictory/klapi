@@ -36,7 +36,7 @@ api-publish:
 	dotnet publish {{api_project}} -c Release -o {{root_dir}}/api/publish
 
 deploy-new-version:
-	{{root_dir}}/scripts/deploy-api.sh
+	{{root_dir}}/scripts/deploy.sh
 
 ui-install:
 	cd {{ui_dir}} && bun install
