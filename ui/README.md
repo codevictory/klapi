@@ -1,6 +1,6 @@
 # Klapi Käyttöliittymä
 
-Freimis: SolidJS
+Freimis: React
 
 ## Käynnistys
 
