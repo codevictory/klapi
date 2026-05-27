@@ -46,6 +46,29 @@ public class Program
 
         builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection("Auth"));
 
+        var emailOptions = builder.Configuration.GetSection("Email").Get<EmailOptions>()
+            ?? throw new InvalidOperationException("Email configuration was not found.");
+
+        if (builder.Environment.IsProduction())
+        {
+            emailOptions.Username =
+                Environment.GetEnvironmentVariable("KLAPI_SMTP_USERNAME")
+                ?? throw new InvalidOperationException("SMTP username must be set in production using KLAPI_SMTP_USERNAME environment variable.");
+            emailOptions.Password =
+                Environment.GetEnvironmentVariable("KLAPI_SMTP_PASSWORD")
+                ?? throw new InvalidOperationException("SMTP password must be set in production using KLAPI_SMTP_PASSWORD environment variable.");
+        }
+
+        builder.Services.Configure<EmailOptions>(o =>
+        {
+            o.SmtpHost = emailOptions.SmtpHost;
+            o.SmtpPort = emailOptions.SmtpPort;
+            o.FromAddress = emailOptions.FromAddress;
+            o.ToAddress = emailOptions.ToAddress;
+            o.Username = emailOptions.Username;
+            o.Password = emailOptions.Password;
+        });
+
         builder.Services.AddScoped(_ => new SqliteConnection(resolvedConnectionString));
         builder.Services.AddScoped<LokService>();
         builder.Services.AddScoped<UserService>();
@@ -285,6 +308,7 @@ public class Program
         AuthEndpoints.MapAuthEndpoints(app);
         LokEndpoints.MapLokEndpoints(app);
         UserEndpoints.MapUserEndpoints(app);
+        FeedbackEndpoints.MapFeedbackEndpoints(app);
 
         app.Run();
     }

@@ -4,6 +4,7 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import Nav from "~/components/Nav";
 import Home from "~/routes/index";
 import About from "~/routes/about";
+import Feedback from "~/routes/feedback";
 import Login from "~/routes/login";
 import Management from "~/routes/management";
 import NotFound from "~/routes/[...404]";
@@ -53,6 +54,7 @@ function AppShell() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
+        <Route path="/feedback" element={<Feedback />} />
         <Route path="/login" element={<Login />} />
         <Route
           path="/management"

@@ -241,3 +241,10 @@ export async function deleteUser(username: string): Promise<void> {
     },
   });
 }
+
+export async function submitFeedback(message: string): Promise<void> {
+  await fetchApi<{ message: string }>("/feedback", {
+    method: "POST",
+    body: JSON.stringify({ message }),
+  });
+}
