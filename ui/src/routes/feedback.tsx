@@ -1,12 +1,28 @@
 import { FormEvent, useEffect, useState } from "react";
+import { useSetRecoilState } from "recoil";
 import { submitFeedback } from "~/api";
-import { useT } from "~/i18n";
+import { LANGUAGE_STORAGE_KEY, useT } from "~/i18n";
+import { languageAtom } from "~/state/appState";
 
 export default function Feedback() {
   const t = useT();
+  const setLanguageAtom = useSetRecoilState(languageAtom);
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [validationError, setValidationError] = useState("");
+
+  useEffect(() => {
+    // Default to English on the feedback page only when no language has been explicitly chosen
+    if (localStorage.getItem(LANGUAGE_STORAGE_KEY) === null) {
+      setLanguageAtom("en");
+    }
+    return () => {
+      // Restore Finnish default when leaving, if the user still hasn't made an explicit choice
+      if (localStorage.getItem(LANGUAGE_STORAGE_KEY) === null) {
+        setLanguageAtom("fi");
+      }
+    };
+  }, [setLanguageAtom]);
 
   useEffect(() => {
     document.title = t("feedback.title");

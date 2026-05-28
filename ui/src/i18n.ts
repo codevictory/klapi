@@ -4,6 +4,8 @@ import { languageAtom, type Language } from "~/state/appState";
 
 const STORAGE_KEY = "ui-language";
 
+export { STORAGE_KEY as LANGUAGE_STORAGE_KEY };
+
 const translations = {
   en: {
     "nav.home": "Home",

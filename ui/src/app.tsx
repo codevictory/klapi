@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import Nav from "~/components/Nav";
@@ -10,19 +10,29 @@ import Management from "~/routes/management";
 import NotFound from "~/routes/[...404]";
 import Toasts from "~/components/Toasts";
 import { APP_ROLES, hasAnyRole } from "~/auth/roles";
-import { initializeLanguage, useLanguage } from "~/i18n";
-import { sessionAtom } from "~/state/appState";
+import { LANGUAGE_STORAGE_KEY, normalizeLanguage, useLanguage } from "~/i18n";
+import { languageAtom, sessionAtom } from "~/state/appState";
 import "./app.css";
 
 function AppShell() {
+  const location = useLocation();
   const { language, setLanguage } = useLanguage();
   const session = useRecoilValue(sessionAtom);
   const setSession = useSetRecoilState(sessionAtom);
+  const setLanguageAtom = useSetRecoilState(languageAtom);
 
   useEffect(() => {
+    // Feedback page manages its own language default
+    if (location.pathname === "/feedback") return;
     const storedPreferredLanguage = localStorage.getItem("session-preferred-language");
-    initializeLanguage(setLanguage, storedPreferredLanguage === "en" || storedPreferredLanguage === "sk" ? storedPreferredLanguage : "fi");
-  }, [setLanguage]);
+    const fallback = normalizeLanguage(storedPreferredLanguage === "en" || storedPreferredLanguage === "sk" ? storedPreferredLanguage : "fi");
+    const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    if (stored !== null) {
+      setLanguage(normalizeLanguage(stored)); // explicit prior choice — keep it saved
+    } else {
+      setLanguageAtom(fallback); // just set the atom, don't persist the default
+    }
+  }, [location.pathname, setLanguage, setLanguageAtom]);
 
   useEffect(() => {
     const storedUsername = localStorage.getItem("session-username");
