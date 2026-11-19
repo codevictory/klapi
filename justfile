@@ -7,6 +7,7 @@ ui_dir := root_dir + "/ui"
 db_dir := root_dir + "/api/Database"
 db_file := db_dir + "/klapi.db"
 db_init_sql := db_dir + "/init.sql"
+db_reset_tarot_cards_sql := db_dir + "/reset-tarot-cards.sql"
 
 default:
 	@just --list
@@ -65,3 +66,11 @@ db-reset:
 db-shell:
 	if ! command -v sqlite3 >/dev/null 2>&1; then echo "sqlite3 is required for db-shell" >&2; exit 1; fi
 	sqlite3 {{db_file}}
+
+# Reset the TarotCards table to exactly the 78 cards from the tarot repo's
+# data/cards.json (see reset-tarot-cards.sql): everything already in the
+# table is deleted, then the json entries are inserted.
+reset-tarot-cards:
+	@if ! command -v sqlite3 >/dev/null 2>&1; then echo "sqlite3 is required for reset-tarot-cards" >&2; exit 1; fi
+	sqlite3 {{db_file}} < {{db_reset_tarot_cards_sql}}
+	@echo "TarotCards reset in {{db_file}}: $(sqlite3 {{db_file}} 'SELECT COUNT(*) FROM TarotCards;') cards"
