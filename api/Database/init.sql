@@ -35,3 +35,15 @@ CREATE TABLE IF NOT EXISTS TarotCards (
   sortOrder INTEGER NOT NULL DEFAULT 0,
   lastUpdated TEXT NOT NULL DEFAULT ''
 );
+
+-- Localized card texts. The base TarotCards columns hold the canonical
+-- (English) title/arcana/description; every supported language (see
+-- AppLanguages in the API: fi, en, sk) can additionally have a row here.
+CREATE TABLE IF NOT EXISTS TarotCardTranslations (
+  cardId TEXT NOT NULL REFERENCES TarotCards(id) ON DELETE CASCADE,
+  language TEXT NOT NULL DEFAULT '',
+  title TEXT NOT NULL DEFAULT '',
+  arcana TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY (cardId, language)
+);

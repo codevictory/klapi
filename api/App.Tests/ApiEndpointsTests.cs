@@ -166,9 +166,17 @@ public class ApiEndpointsTests(DevelopmentApiTestFactory factory) : IClassFixtur
     using var client = factory.CreateClient();
     client.DefaultRequestHeaders.Add("X-API-Key", ApiTestFactoryBase.SiteApiKey);
 
-    var syncPayload = new[]
+    var syncPayload = new object[]
     {
-      new { id = "fool", title = "The Fool", arcana = "Major Arcana", image = "cards/fool.jpg", description = "A leap of faith.", sortOrder = 0 },
+      new
+      {
+        id = "fool", title = "The Fool", arcana = "Major Arcana", image = "cards/fool.jpg", description = "A leap of faith.", sortOrder = 0,
+        translations = new
+        {
+          en = new { title = "The Fool", arcana = "Major Arcana", description = "A leap of faith." },
+          fi = new { title = "Narri", arcana = "Iso arkana", description = "Uskon hyppy tuntemattomaan." }
+        }
+      },
       new { id = "magician", title = "The Magician", arcana = "Major Arcana", image = "cards/magician.jpg", description = "Manifestation.", sortOrder = 1 }
     };
 
@@ -186,6 +194,16 @@ public class ApiEndpointsTests(DevelopmentApiTestFactory factory) : IClassFixtur
     Assert.Equal("magician", cards[1].Id);
     Assert.Equal(1, cards[1].SortOrder);
 
+    // Supplied translations round-trip; a card without translations still
+    // gets the canonical English row derived from the base columns.
+    Assert.True(cards[0].Translations.ContainsKey("fi"));
+    Assert.Equal("Narri", cards[0].Translations["fi"].Title);
+    Assert.Equal("Iso arkana", cards[0].Translations["fi"].Arcana);
+    Assert.Equal("Uskon hyppy tuntemattomaan.", cards[0].Translations["fi"].Description);
+    Assert.True(cards[1].Translations.ContainsKey("en"));
+    Assert.Equal("The Magician", cards[1].Translations["en"].Title);
+    Assert.False(cards[1].Translations.ContainsKey("fi"));
+
     var syncAgainPayload = new[]
     {
       new { id = "fool", title = "The Fool", arcana = "Major Arcana", image = "cards/fool.jpg", description = "Updated description.", sortOrder = 0 }
@@ -199,6 +217,10 @@ public class ApiEndpointsTests(DevelopmentApiTestFactory factory) : IClassFixtur
     Assert.NotNull(cardsAfterSync);
     Assert.Single(cardsAfterSync);
     Assert.Equal("Updated description.", cardsAfterSync[0].Description);
+    // Re-syncing without translations replaces the old rows: only the
+    // canonical English backfill remains.
+    Assert.False(cardsAfterSync[0].Translations.ContainsKey("fi"));
+    Assert.Equal("The Fool", cardsAfterSync[0].Translations["en"].Title);
 
     var emptySyncResponse = await client.PutAsJsonAsync("/tarot/cards", Array.Empty<object>());
     Assert.Equal(HttpStatusCode.BadRequest, emptySyncResponse.StatusCode);
@@ -534,6 +556,15 @@ public class UserDto
   public List<string> Roles { get; set; } = [];
 }
 
+public class TarotCardTranslationDto
+{
+  public string Title { get; set; } = string.Empty;
+
+  public string Arcana { get; set; } = string.Empty;
+
+  public string Description { get; set; } = string.Empty;
+}
+
 public class TarotCardDto
 {
   public string Id { get; set; } = string.Empty;
@@ -547,4 +578,6 @@ public class TarotCardDto
   public string Description { get; set; } = string.Empty;
 
   public int SortOrder { get; set; }
+
+  public Dictionary<string, TarotCardTranslationDto> Translations { get; set; } = new();
 }

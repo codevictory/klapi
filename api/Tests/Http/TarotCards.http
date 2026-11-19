@@ -19,6 +19,10 @@ X-API-Key: {{SiteApiKey}}
     "arcana": "Major Arcana",
     "image": "cards/fool.jpg",
     "description": "A leap of faith into the unknown.",
-    "sortOrder": 0
+    "sortOrder": 0,
+    "translations": {
+      "en": { "title": "The Fool", "arcana": "Major Arcana", "description": "A leap of faith into the unknown." },
+      "fi": { "title": "Narri", "arcana": "Iso arkana", "description": "Uskon hyppy tuntemattomaan." }
+    }
   }
 ]
