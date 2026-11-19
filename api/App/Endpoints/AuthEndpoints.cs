@@ -13,6 +13,14 @@ public class AuthAdminOptions
   public string DisplayName { get; set; } = string.Empty;
 }
 
+// Site-to-site (machine-to-machine) credentials for service clients such as
+// the tarot site. No portal user is created for these; the API key is checked
+// directly against configuration by the SiteApiKey authentication scheme.
+public class AuthSiteToSiteOptions
+{
+  public string ApiKey { get; set; } = string.Empty;
+}
+
 public class AuthOptions
 {
   public string Issuer { get; set; } = "klapi-api";
@@ -20,6 +28,7 @@ public class AuthOptions
   public string SigningKey { get; set; } = string.Empty;
   public List<string> AllowedOrigins { get; set; } = [];
   public AuthAdminOptions Admin { get; set; } = new();
+  public AuthSiteToSiteOptions SiteToSite { get; set; } = new();
 }
 
 public static class AuthEndpoints

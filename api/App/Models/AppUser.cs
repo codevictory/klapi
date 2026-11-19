@@ -3,6 +3,10 @@ public static class AppRoles
   public const string Lok = "lok";
   public const string Admin = "admin";
 
+  // Machine role granted only to site-to-site API key principals; not
+  // assignable to portal users.
+  public const string Tarot = "tarot";
+
   public static readonly IReadOnlyList<string> All = [Lok, Admin];
 }
 

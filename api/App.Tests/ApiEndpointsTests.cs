@@ -10,6 +10,14 @@ using Microsoft.Extensions.Hosting;
 
 namespace App.Tests;
 
+// Both test classes share one collection so they never run in parallel:
+// WebApplicationFactory applies per-factory configuration through the deferred
+// host builder, which is not safe when two factories start concurrently in the
+// same process (config can leak and tests would hit the real klapi.db).
+[CollectionDefinition("ApiTests", DisableParallelization = true)]
+public class ApiTestsCollection;
+
+[Collection("ApiTests")]
 public class ApiEndpointsTests(DevelopmentApiTestFactory factory) : IClassFixture<DevelopmentApiTestFactory>
 {
   private readonly HttpClient _client = factory.CreateClient();
@@ -133,8 +141,71 @@ public class ApiEndpointsTests(DevelopmentApiTestFactory factory) : IClassFixtur
     var deleteAgainResponse = await _client.DeleteAsync($"/lok/open-hours/{created.Id}");
     Assert.Equal(HttpStatusCode.NotFound, deleteAgainResponse.StatusCode);
   }
+
+  [Fact]
+  public async Task TarotCards_RequireSiteApiKey_InDevelopment()
+  {
+    var getWithoutKey = await _client.GetAsync("/tarot/cards");
+    Assert.Equal(HttpStatusCode.Unauthorized, getWithoutKey.StatusCode);
+
+    var syncWithoutKey = await _client.PutAsJsonAsync("/tarot/cards", new[]
+    {
+      new { id = "fool", title = "The Fool", arcana = "Major Arcana", image = "cards/fool.jpg", description = "desc", sortOrder = 0 }
+    });
+    Assert.Equal(HttpStatusCode.Unauthorized, syncWithoutKey.StatusCode);
+
+    using var wrongKeyClient = factory.CreateClient();
+    wrongKeyClient.DefaultRequestHeaders.Add("X-API-Key", "wrong-key-wrong-key-wrong-key-00");
+    var getWrongKey = await wrongKeyClient.GetAsync("/tarot/cards");
+    Assert.Equal(HttpStatusCode.Unauthorized, getWrongKey.StatusCode);
+  }
+
+  [Fact]
+  public async Task TarotCards_SiteApiKey_SyncAndGetAll_InDevelopment()
+  {
+    using var client = factory.CreateClient();
+    client.DefaultRequestHeaders.Add("X-API-Key", ApiTestFactoryBase.SiteApiKey);
+
+    var syncPayload = new[]
+    {
+      new { id = "fool", title = "The Fool", arcana = "Major Arcana", image = "cards/fool.jpg", description = "A leap of faith.", sortOrder = 0 },
+      new { id = "magician", title = "The Magician", arcana = "Major Arcana", image = "cards/magician.jpg", description = "Manifestation.", sortOrder = 1 }
+    };
+
+    var syncResponse = await client.PutAsJsonAsync("/tarot/cards", syncPayload);
+    Assert.Equal(HttpStatusCode.OK, syncResponse.StatusCode);
+
+    var getResponse = await client.GetAsync("/tarot/cards");
+    Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+
+    var cards = await getResponse.Content.ReadFromJsonAsync<List<TarotCardDto>>();
+    Assert.NotNull(cards);
+    Assert.Equal(2, cards.Count);
+    Assert.Equal("fool", cards[0].Id);
+    Assert.Equal("A leap of faith.", cards[0].Description);
+    Assert.Equal("magician", cards[1].Id);
+    Assert.Equal(1, cards[1].SortOrder);
+
+    var syncAgainPayload = new[]
+    {
+      new { id = "fool", title = "The Fool", arcana = "Major Arcana", image = "cards/fool.jpg", description = "Updated description.", sortOrder = 0 }
+    };
+
+    var syncAgainResponse = await client.PutAsJsonAsync("/tarot/cards", syncAgainPayload);
+    Assert.Equal(HttpStatusCode.OK, syncAgainResponse.StatusCode);
+
+    var getAfterSyncResponse = await client.GetAsync("/tarot/cards");
+    var cardsAfterSync = await getAfterSyncResponse.Content.ReadFromJsonAsync<List<TarotCardDto>>();
+    Assert.NotNull(cardsAfterSync);
+    Assert.Single(cardsAfterSync);
+    Assert.Equal("Updated description.", cardsAfterSync[0].Description);
+
+    var emptySyncResponse = await client.PutAsJsonAsync("/tarot/cards", Array.Empty<object>());
+    Assert.Equal(HttpStatusCode.BadRequest, emptySyncResponse.StatusCode);
+  }
 }
 
+[Collection("ApiTests")]
 public class ProductionAuthTests(ProductionApiTestFactory factory) : IClassFixture<ProductionApiTestFactory>
 {
   private readonly HttpClient _client = factory.CreateClient();
@@ -243,12 +314,110 @@ public class ProductionAuthTests(ProductionApiTestFactory factory) : IClassFixtu
     var deleteResponse = await _client.DeleteAsync("/users/editor");
     Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
   }
+
+  [Fact]
+  public async Task TarotCards_RequireSiteApiKey_InProduction()
+  {
+    var getWithoutKey = await _client.GetAsync("/tarot/cards");
+    Assert.Equal(HttpStatusCode.Unauthorized, getWithoutKey.StatusCode);
+
+    var syncWithoutKey = await _client.PutAsJsonAsync("/tarot/cards", new[]
+    {
+      new { id = "fool", title = "The Fool", arcana = "Major Arcana", image = "cards/fool.jpg", description = "desc", sortOrder = 0 }
+    });
+    Assert.Equal(HttpStatusCode.Unauthorized, syncWithoutKey.StatusCode);
+
+    using var wrongKeyClient = factory.CreateClient();
+    wrongKeyClient.DefaultRequestHeaders.Add("X-API-Key", "wrong-key-wrong-key-wrong-key-00");
+    var getWrongKey = await wrongKeyClient.GetAsync("/tarot/cards");
+    Assert.Equal(HttpStatusCode.Unauthorized, getWrongKey.StatusCode);
+  }
+
+  [Fact]
+  public async Task TarotCards_SiteApiKey_CanSyncAndGetAll_InProduction()
+  {
+    using var client = factory.CreateClient();
+    client.DefaultRequestHeaders.Add("X-API-Key", ApiTestFactoryBase.SiteApiKey);
+
+    var syncPayload = new[]
+    {
+      new { id = "fool", title = "The Fool", arcana = "Major Arcana", image = "cards/fool.jpg", description = "A leap of faith.", sortOrder = 0 },
+      new { id = "world", title = "The World", arcana = "Major Arcana", image = "cards/world.jpg", description = "Completion.", sortOrder = 21 }
+    };
+
+    var syncResponse = await client.PutAsJsonAsync("/tarot/cards", syncPayload);
+    Assert.Equal(HttpStatusCode.OK, syncResponse.StatusCode);
+
+    var getResponse = await client.GetAsync("/tarot/cards");
+    Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+
+    var cards = await getResponse.Content.ReadFromJsonAsync<List<TarotCardDto>>();
+    Assert.NotNull(cards);
+    Assert.Equal(2, cards.Count);
+    Assert.Equal("fool", cards[0].Id);
+    Assert.Equal("world", cards[1].Id);
+  }
+
+  [Fact]
+  public async Task TarotCards_PortalJwt_Rejected_InProduction()
+  {
+    // The tarot endpoints are machine-only: even a valid admin JWT must not
+    // open them without the site-to-site API key.
+    var tokenResponse = await _client.PostAsJsonAsync("/auth/token", new
+    {
+      username = "admin",
+      password = "changeme"
+    });
+    Assert.Equal(HttpStatusCode.OK, tokenResponse.StatusCode);
+    var auth = await tokenResponse.Content.ReadFromJsonAsync<AuthTokenDto>();
+    Assert.NotNull(auth);
+
+    using var jwtClient = factory.CreateClient();
+    jwtClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.AccessToken);
+
+    var getResponse = await jwtClient.GetAsync("/tarot/cards");
+    Assert.Equal(HttpStatusCode.Unauthorized, getResponse.StatusCode);
+  }
 }
 
-public abstract class ApiTestFactoryBase(string environmentName) : WebApplicationFactory<Program>
+public abstract class ApiTestFactoryBase : WebApplicationFactory<Program>
 {
-  private readonly string _environmentName = environmentName;
+  private static readonly string[] TestConfigKeys =
+  [
+    "ConnectionStrings__DefaultConnection",
+    "Auth__Issuer",
+    "Auth__Audience",
+    "Auth__SigningKey",
+    "Auth__AllowedOrigins__0",
+    "Auth__Admin__Username",
+    "Auth__Admin__Password",
+    "Auth__Admin__DisplayName",
+    "Auth__SiteToSite__ApiKey"
+  ];
+
+  public const string SiteApiKey = "test-site-api-key-0123456789abcdef";
+
+  private readonly string _environmentName;
   private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"klapi-tests-{Guid.NewGuid():N}.db");
+
+  protected ApiTestFactoryBase(string environmentName)
+  {
+    _environmentName = environmentName;
+
+    // Program.cs reads configuration synchronously while the host is being
+    // built, so the overrides must come from a config source that is present
+    // from the start: environment variables. (In-memory configuration added
+    // via ConfigureAppConfiguration below is applied too late for those reads.)
+    Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", $"Data Source={_dbPath}");
+    Environment.SetEnvironmentVariable("Auth__Issuer", "klapi-api");
+    Environment.SetEnvironmentVariable("Auth__Audience", "klapi-ui");
+    Environment.SetEnvironmentVariable("Auth__SigningKey", "change-this-to-a-long-random-32-char-minimum-key");
+    Environment.SetEnvironmentVariable("Auth__AllowedOrigins__0", "http://localhost:5173");
+    Environment.SetEnvironmentVariable("Auth__Admin__Username", "admin");
+    Environment.SetEnvironmentVariable("Auth__Admin__Password", "changeme");
+    Environment.SetEnvironmentVariable("Auth__Admin__DisplayName", "Administrator");
+    Environment.SetEnvironmentVariable("Auth__SiteToSite__ApiKey", SiteApiKey);
+  }
 
   protected override void ConfigureWebHost(IWebHostBuilder builder)
   {
@@ -265,7 +434,8 @@ public abstract class ApiTestFactoryBase(string environmentName) : WebApplicatio
         ["Auth:AllowedOrigins:0"] = "http://localhost:5173",
         ["Auth:Admin:Username"] = "admin",
         ["Auth:Admin:Password"] = "changeme",
-        ["Auth:Admin:DisplayName"] = "Administrator"
+        ["Auth:Admin:DisplayName"] = "Administrator",
+        ["Auth:SiteToSite:ApiKey"] = SiteApiKey
       });
     });
   }
@@ -277,6 +447,11 @@ public abstract class ApiTestFactoryBase(string environmentName) : WebApplicatio
     if (!disposing)
     {
       return;
+    }
+
+    foreach (var key in TestConfigKeys)
+    {
+      Environment.SetEnvironmentVariable(key, null);
     }
 
     try
@@ -357,4 +532,19 @@ public class UserDto
   public string PreferredLanguage { get; set; } = string.Empty;
 
   public List<string> Roles { get; set; } = [];
+}
+
+public class TarotCardDto
+{
+  public string Id { get; set; } = string.Empty;
+
+  public string Title { get; set; } = string.Empty;
+
+  public string Arcana { get; set; } = string.Empty;
+
+  public string Image { get; set; } = string.Empty;
+
+  public string Description { get; set; } = string.Empty;
+
+  public int SortOrder { get; set; }
 }

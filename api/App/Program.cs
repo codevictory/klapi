@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using System.Text;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -27,14 +28,27 @@ public class Program
 
         if (builder.Environment.IsProduction())
         {
-            authOptions.Admin.Password =
-                Environment.GetEnvironmentVariable("KLAPI_ADMIN_PASSWORD")
-                ?? throw new InvalidOperationException("Admin password must be set in production environment using KLAPI_ADMIN_PASSWORD environment variable.");
+            var adminPassword = Environment.GetEnvironmentVariable("KLAPI_ADMIN_PASSWORD");
+            if (!string.IsNullOrWhiteSpace(adminPassword))
+            {
+                authOptions.Admin.Password = adminPassword;
+            }
+
+            var siteApiKey = Environment.GetEnvironmentVariable("KLAPI_SITE_API_KEY");
+            if (!string.IsNullOrWhiteSpace(siteApiKey))
+            {
+                authOptions.SiteToSite.ApiKey = siteApiKey;
+            }
         }
 
         if (string.IsNullOrWhiteSpace(authOptions.SigningKey) || authOptions.SigningKey.Length < 32)
         {
             throw new InvalidOperationException("Auth:SigningKey must be at least 32 characters long.");
+        }
+
+        if (string.IsNullOrWhiteSpace(authOptions.SiteToSite.ApiKey) || authOptions.SiteToSite.ApiKey.Length < 32)
+        {
+            throw new InvalidOperationException("Auth:SiteToSite:ApiKey must be at least 32 characters long.");
         }
 
         if (string.IsNullOrWhiteSpace(authOptions.Admin.Username)
@@ -44,19 +58,35 @@ public class Program
             throw new InvalidOperationException("Auth:Admin username, password and display name must be configured.");
         }
 
-        builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection("Auth"));
+        // Bind from the (possibly env-overridden) local instance, same as
+        // EmailOptions below, so IOptions<AuthOptions> consumers see the
+        // production env-var values too.
+        builder.Services.Configure<AuthOptions>(o =>
+        {
+            o.Issuer = authOptions.Issuer;
+            o.Audience = authOptions.Audience;
+            o.SigningKey = authOptions.SigningKey;
+            o.AllowedOrigins = authOptions.AllowedOrigins;
+            o.Admin = authOptions.Admin;
+            o.SiteToSite = authOptions.SiteToSite;
+        });
 
         var emailOptions = builder.Configuration.GetSection("Email").Get<EmailOptions>()
             ?? throw new InvalidOperationException("Email configuration was not found.");
 
         if (builder.Environment.IsProduction())
         {
-            emailOptions.Username =
-                Environment.GetEnvironmentVariable("KLAPI_SMTP_USERNAME")
-                ?? throw new InvalidOperationException("SMTP username must be set in production using KLAPI_SMTP_USERNAME environment variable.");
-            emailOptions.Password =
-                Environment.GetEnvironmentVariable("KLAPI_SMTP_PASSWORD")
-                ?? throw new InvalidOperationException("SMTP password must be set in production using KLAPI_SMTP_PASSWORD environment variable.");
+            var smtpUsername = Environment.GetEnvironmentVariable("KLAPI_SMTP_USERNAME");
+            if (!string.IsNullOrWhiteSpace(smtpUsername))
+            {
+                emailOptions.Username = smtpUsername;
+            }
+
+            var smtpPassword = Environment.GetEnvironmentVariable("KLAPI_SMTP_PASSWORD");
+            if (!string.IsNullOrWhiteSpace(smtpPassword))
+            {
+                emailOptions.Password = smtpPassword;
+            }
         }
 
         builder.Services.Configure<EmailOptions>(o =>
@@ -72,6 +102,7 @@ public class Program
         builder.Services.AddScoped(_ => new SqliteConnection(resolvedConnectionString));
         builder.Services.AddScoped<LokService>();
         builder.Services.AddScoped<UserService>();
+        builder.Services.AddScoped<TarotService>();
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("PublicReadCors", policy =>
@@ -91,22 +122,38 @@ public class Program
             });
         });
 
-        builder.Services
-            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
+        var authenticationBuilder = builder.Services.AddAuthentication(options =>
+        {
+            options.DefaultScheme = builder.Environment.IsDevelopment()
+                ? DevelopmentAuthHandler.AuthenticationScheme
+                : JwtBearerDefaults.AuthenticationScheme;
+        });
+
+        if (builder.Environment.IsDevelopment())
+        {
+            authenticationBuilder.AddScheme<AuthenticationSchemeOptions, DevelopmentAuthHandler>(
+                DevelopmentAuthHandler.AuthenticationScheme,
+                _ => { });
+        }
+
+        authenticationBuilder.AddScheme<AuthenticationSchemeOptions, SiteApiKeyAuthHandler>(
+            SiteApiKeyAuthHandler.AuthenticationScheme,
+            _ => { });
+
+        authenticationBuilder.AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
             {
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidateLifetime = true,
-                    ValidIssuer = authOptions.Issuer,
-                    ValidAudience = authOptions.Audience,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(authOptions.SigningKey)),
-                    ClockSkew = TimeSpan.FromMinutes(1)
-                };
-            });
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateIssuerSigningKey = true,
+                ValidateLifetime = true,
+                ValidIssuer = authOptions.Issuer,
+                ValidAudience = authOptions.Audience,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(authOptions.SigningKey)),
+                ClockSkew = TimeSpan.FromMinutes(1)
+            };
+        });
 
         builder.Services.AddAuthorization(options =>
         {
@@ -120,6 +167,15 @@ public class Program
             {
                 policy.RequireAuthenticatedUser();
                 policy.RequireRole(AppRoles.Admin);
+            });
+
+            // Tarot backend endpoints are machine-only: they authenticate
+            // exclusively via the site-to-site API key, never via portal JWT.
+            options.AddPolicy("HasTarotRole", policy =>
+            {
+                policy.AddAuthenticationSchemes(SiteApiKeyAuthHandler.AuthenticationScheme);
+                policy.RequireAuthenticatedUser();
+                policy.RequireRole(AppRoles.Tarot);
             });
         });
 
@@ -309,6 +365,7 @@ public class Program
         LokEndpoints.MapLokEndpoints(app);
         UserEndpoints.MapUserEndpoints(app);
         FeedbackEndpoints.MapFeedbackEndpoints(app);
+        TarotEndpoints.MapTarotEndpoints(app);
 
         app.Run();
     }
