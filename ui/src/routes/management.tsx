@@ -2,7 +2,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { createUser, deleteUser, queryUsers, updateUser, type User } from "~/api";
 import { useT } from "~/i18n";
 
-const AVAILABLE_ROLES = ["lok", "admin"];
+const AVAILABLE_ROLES = ["lok", "admin", "tarot-admin"];
 
 type Mode = "create" | "edit";
 type LanguageOption = "fi" | "en" | "sk";

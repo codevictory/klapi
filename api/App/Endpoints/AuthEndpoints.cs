@@ -6,11 +6,24 @@ using Microsoft.IdentityModel.Tokens;
 
 public record AuthTokenRequest(string? Username, string Password);
 
-public class AuthAdminOptions
+// A portal user bootstrapped from configuration at startup (upserted into the
+// Users table with its configured role). Used for the klapi admin and the
+// tarot admin, which are intentionally separate credentials.
+public class AuthPortalUserOptions
 {
   public string Username { get; set; } = string.Empty;
   public string Password { get; set; } = string.Empty;
   public string DisplayName { get; set; } = string.Empty;
+}
+
+public class AuthAdminOptions : AuthPortalUserOptions
+{
+}
+
+// Credentials for the tarot site's admin page. Separate from Auth:Admin so the
+// tarot admin password never grants klapi admin rights (and vice versa).
+public class AuthTarotAdminOptions : AuthPortalUserOptions
+{
 }
 
 // Site-to-site (machine-to-machine) credentials for service clients such as
@@ -28,6 +41,7 @@ public class AuthOptions
   public string SigningKey { get; set; } = string.Empty;
   public List<string> AllowedOrigins { get; set; } = [];
   public AuthAdminOptions Admin { get; set; } = new();
+  public AuthTarotAdminOptions TarotAdmin { get; set; } = new();
   public AuthSiteToSiteOptions SiteToSite { get; set; } = new();
 }
 

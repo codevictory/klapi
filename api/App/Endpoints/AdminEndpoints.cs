@@ -1,6 +1,8 @@
-// Administration endpoints behind the /admin portal. Unlike the machine-only
-// /tarot endpoints (site-to-site API key), these are for human portal users
-// and require a JWT with the admin role.
+// Tarot administration endpoints behind the tarot site's /admin portal.
+// Unlike the machine-only /tarot endpoints (site-to-site API key), these are
+// for human portal users, but they require the dedicated tarot-admin role —
+// NOT the klapi admin role, so the tarot admin credentials stay separate from
+// the klapi admin credentials.
 public record AdminCardTextsUpdateRequest(
   string? EnglishTitle,
   string? EnglishDescription,
@@ -19,7 +21,7 @@ public static class AdminEndpoints
       await httpContext.Response.WriteAsJsonAsync(cards);
     })
     .RequireCors("FrontendWriteCors")
-    .RequireAuthorization("HasAdminRole")
+    .RequireAuthorization("HasTarotAdminRole")
     .WithName("GetAdminTarotCards");
 
     app.MapPut("/admin/tarot/cards/{cardId}/texts", async (HttpContext httpContext, string cardId) =>
@@ -91,7 +93,7 @@ public static class AdminEndpoints
       await httpContext.Response.WriteAsJsonAsync(updatedCard);
     })
     .RequireCors("FrontendWriteCors")
-    .RequireAuthorization("HasAdminRole")
+    .RequireAuthorization("HasTarotAdminRole")
     .WithName("UpdateAdminTarotCardTexts");
   }
 }

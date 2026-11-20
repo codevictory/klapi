@@ -1,23 +1,24 @@
 @App_HostAddress = http://localhost:5013
-@AdminUsername = admin
-@AdminPassword = changeme
+@TarotAdminUsername = hermes-trismegistos
+@TarotAdminPassword = changeme
 
-### Sign in as a portal admin to get a JWT (paste the accessToken below)
+### Sign in as the tarot admin portal user to get a JWT (paste the accessToken below).
+### This account has only the tarot-admin role — separate from the klapi admin.
 POST {{App_HostAddress}}/auth/token
 Content-Type: application/json
 Accept: application/json
 
 {
-  "username": "{{AdminUsername}}",
-  "password": "{{AdminPassword}}"
+  "username": "{{TarotAdminUsername}}",
+  "password": "{{TarotAdminPassword}}"
 }
 
-### Get all tarot cards (with translations) for the /admin portal — admin JWT required
+### Get all tarot cards (with translations) for the tarot site's /admin portal — tarot-admin JWT required
 GET {{App_HostAddress}}/admin/tarot/cards
 Accept: application/json
 Authorization: Bearer <accessToken>
 
-### Update English + Finnish title/description of one card — admin JWT required
+### Update English + Finnish title/description of one card — tarot-admin JWT required
 PUT {{App_HostAddress}}/admin/tarot/cards/fool/texts
 Content-Type: application/json
 Accept: application/json

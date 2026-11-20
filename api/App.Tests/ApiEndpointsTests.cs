@@ -473,7 +473,7 @@ public class ProductionAuthTests(ProductionApiTestFactory factory) : IClassFixtu
   }
 
   [Fact]
-  public async Task AdminTarotCards_RequireAdminRole_InProduction()
+  public async Task AdminTarotCards_RequireTarotAdminRole_InProduction()
   {
     var getWithoutAuth = await _client.GetAsync("/admin/tarot/cards");
     Assert.Equal(HttpStatusCode.Unauthorized, getWithoutAuth.StatusCode);
@@ -485,7 +485,7 @@ public class ProductionAuthTests(ProductionApiTestFactory factory) : IClassFixtu
     });
     Assert.Equal(HttpStatusCode.Unauthorized, putWithoutAuth.StatusCode);
 
-    // A portal user without the admin role gets 403.
+    // A portal user without the tarot-admin role gets 403.
     var adminTokenResponse = await _client.PostAsJsonAsync("/auth/token", new
     {
       username = "admin",
@@ -526,12 +526,79 @@ public class ProductionAuthTests(ProductionApiTestFactory factory) : IClassFixtu
     });
     Assert.Equal(HttpStatusCode.Forbidden, forbiddenPut.StatusCode);
 
+    // The klapi admin role alone must NOT open the tarot admin endpoints:
+    // tarot has its own credentials.
+    using var adminClient = factory.CreateClient();
+    adminClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminAuth.AccessToken);
+
+    var adminForbiddenGet = await adminClient.GetAsync("/admin/tarot/cards");
+    Assert.Equal(HttpStatusCode.Forbidden, adminForbiddenGet.StatusCode);
+
+    var adminForbiddenPut = await adminClient.PutAsJsonAsync("/admin/tarot/cards/fool/texts", new
+    {
+      englishTitle = "x",
+      finnishTitle = "y"
+    });
+    Assert.Equal(HttpStatusCode.Forbidden, adminForbiddenPut.StatusCode);
+
+    // The dedicated tarot admin user (seeded from Auth:TarotAdmin) can.
+    var tarotTokenResponse = await _client.PostAsJsonAsync("/auth/token", new
+    {
+      username = "hermes-trismegistos",
+      password = "tarotpass"
+    });
+    Assert.Equal(HttpStatusCode.OK, tarotTokenResponse.StatusCode);
+    var tarotAuth = await tarotTokenResponse.Content.ReadFromJsonAsync<AuthTokenDto>();
+    Assert.NotNull(tarotAuth);
+    Assert.Contains("tarot-admin", tarotAuth.Roles);
+    Assert.DoesNotContain("admin", tarotAuth.Roles);
+
+    using var tarotClient = factory.CreateClient();
+    tarotClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tarotAuth.AccessToken);
+
+    var tarotGet = await tarotClient.GetAsync("/admin/tarot/cards");
+    Assert.Equal(HttpStatusCode.OK, tarotGet.StatusCode);
+
     var deleteResponse = await _client.DeleteAsync("/users/lokuser");
     Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
   }
 
   [Fact]
-  public async Task AdminTarotCards_AdminJwt_CanGetAndUpdateTexts_InProduction()
+  public async Task TarotAdmin_CannotAccessKlapiAdminEndpoints_InProduction()
+  {
+    // Separation works both ways: the tarot admin JWT must not open klapi's
+    // lok or user-management endpoints.
+    var tarotTokenResponse = await _client.PostAsJsonAsync("/auth/token", new
+    {
+      username = "hermes-trismegistos",
+      password = "tarotpass"
+    });
+    Assert.Equal(HttpStatusCode.OK, tarotTokenResponse.StatusCode);
+    var tarotAuth = await tarotTokenResponse.Content.ReadFromJsonAsync<AuthTokenDto>();
+    Assert.NotNull(tarotAuth);
+
+    using var tarotClient = factory.CreateClient();
+    tarotClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tarotAuth.AccessToken);
+
+    var usersResponse = await tarotClient.GetAsync("/users");
+    Assert.Equal(HttpStatusCode.Forbidden, usersResponse.StatusCode);
+
+    var lokResponse = await tarotClient.PostAsJsonAsync("/lok/open-hours", new
+    {
+      id = 0,
+      name = "forbidden",
+      version = DateTime.UtcNow.ToString("O"),
+      paragraph1 = "p1",
+      paragraph2 = "p2",
+      paragraph3 = "p3",
+      paragraph4 = "p4",
+      kitchenNotice = "k1"
+    });
+    Assert.Equal(HttpStatusCode.Forbidden, lokResponse.StatusCode);
+  }
+
+  [Fact]
+  public async Task AdminTarotCards_TarotAdminJwt_CanGetAndUpdateTexts_InProduction()
   {
     using var seedClient = factory.CreateClient();
     seedClient.DefaultRequestHeaders.Add("X-API-Key", ApiTestFactoryBase.SiteApiKey);
@@ -544,23 +611,24 @@ public class ProductionAuthTests(ProductionApiTestFactory factory) : IClassFixtu
 
     var tokenResponse = await _client.PostAsJsonAsync("/auth/token", new
     {
-      username = "admin",
-      password = "changeme"
+      username = "hermes-trismegistos",
+      password = "tarotpass"
     });
+    Assert.Equal(HttpStatusCode.OK, tokenResponse.StatusCode);
     var auth = await tokenResponse.Content.ReadFromJsonAsync<AuthTokenDto>();
     Assert.NotNull(auth);
 
-    using var adminClient = factory.CreateClient();
-    adminClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.AccessToken);
+    using var tarotAdminClient = factory.CreateClient();
+    tarotAdminClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.AccessToken);
 
-    var getResponse = await adminClient.GetAsync("/admin/tarot/cards");
+    var getResponse = await tarotAdminClient.GetAsync("/admin/tarot/cards");
     Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
 
     var cards = await getResponse.Content.ReadFromJsonAsync<List<TarotCardDto>>();
     Assert.NotNull(cards);
     Assert.Single(cards);
 
-    var updateResponse = await adminClient.PutAsJsonAsync("/admin/tarot/cards/world/texts", new
+    var updateResponse = await tarotAdminClient.PutAsJsonAsync("/admin/tarot/cards/world/texts", new
     {
       englishTitle = "The World!",
       englishDescription = "Completion, updated.",
@@ -598,6 +666,9 @@ public abstract class ApiTestFactoryBase : WebApplicationFactory<Program>
     "Auth__Admin__Username",
     "Auth__Admin__Password",
     "Auth__Admin__DisplayName",
+    "Auth__TarotAdmin__Username",
+    "Auth__TarotAdmin__Password",
+    "Auth__TarotAdmin__DisplayName",
     "Auth__SiteToSite__ApiKey"
   ];
 
@@ -622,6 +693,9 @@ public abstract class ApiTestFactoryBase : WebApplicationFactory<Program>
     Environment.SetEnvironmentVariable("Auth__Admin__Username", "admin");
     Environment.SetEnvironmentVariable("Auth__Admin__Password", "changeme");
     Environment.SetEnvironmentVariable("Auth__Admin__DisplayName", "Administrator");
+    Environment.SetEnvironmentVariable("Auth__TarotAdmin__Username", "hermes-trismegistos");
+    Environment.SetEnvironmentVariable("Auth__TarotAdmin__Password", "tarotpass");
+    Environment.SetEnvironmentVariable("Auth__TarotAdmin__DisplayName", "Hermes Trismegistos");
     Environment.SetEnvironmentVariable("Auth__SiteToSite__ApiKey", SiteApiKey);
   }
 
@@ -641,6 +715,9 @@ public abstract class ApiTestFactoryBase : WebApplicationFactory<Program>
         ["Auth:Admin:Username"] = "admin",
         ["Auth:Admin:Password"] = "changeme",
         ["Auth:Admin:DisplayName"] = "Administrator",
+        ["Auth:TarotAdmin:Username"] = "hermes-trismegistos",
+        ["Auth:TarotAdmin:Password"] = "tarotpass",
+        ["Auth:TarotAdmin:DisplayName"] = "Hermes Trismegistos",
         ["Auth:SiteToSite:ApiKey"] = SiteApiKey
       });
     });

@@ -3,11 +3,17 @@ public static class AppRoles
   public const string Lok = "lok";
   public const string Admin = "admin";
 
+  // Portal role for the tarot site's own admin page (/admin on the tarot
+  // server). Deliberately separate from Admin: the tarot admin credentials
+  // must not open klapi's lok/user-management endpoints, and the klapi admin
+  // credentials must not open the tarot admin endpoints.
+  public const string TarotAdmin = "tarot-admin";
+
   // Machine role granted only to site-to-site API key principals; not
   // assignable to portal users.
   public const string Tarot = "tarot";
 
-  public static readonly IReadOnlyList<string> All = [Lok, Admin];
+  public static readonly IReadOnlyList<string> All = [Lok, Admin, TarotAdmin];
 }
 
 public static class AppLanguages

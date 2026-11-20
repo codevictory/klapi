@@ -12,10 +12,20 @@ public class UserService
 
   public async Task EnsureAdminUser(AuthAdminOptions admin)
   {
+    await EnsureConfiguredUser(admin, AppRoles.Admin);
+  }
+
+  public async Task EnsureTarotAdminUser(AuthTarotAdminOptions tarotAdmin)
+  {
+    await EnsureConfiguredUser(tarotAdmin, AppRoles.TarotAdmin);
+  }
+
+  private async Task EnsureConfiguredUser(AuthPortalUserOptions user, string roleName)
+  {
     await EnsureOpenConnection();
 
     var now = DateTime.UtcNow;
-    var normalizedUsername = admin.Username.Trim().ToLowerInvariant();
+    var normalizedUsername = user.Username.Trim().ToLowerInvariant();
 
     await using var upsertCommand = _connection.CreateCommand();
     upsertCommand.CommandText = @"
@@ -29,10 +39,10 @@ public class UserService
       SELECT id FROM Users WHERE username = @username;";
 
     upsertCommand.Parameters.AddWithValue("@username", normalizedUsername);
-    upsertCommand.Parameters.AddWithValue("@password", admin.Password);
+    upsertCommand.Parameters.AddWithValue("@password", user.Password);
     upsertCommand.Parameters.AddWithValue("@added", now.ToString("O"));
     upsertCommand.Parameters.AddWithValue("@lastUpdated", now.ToString("O"));
-    upsertCommand.Parameters.AddWithValue("@displayName", admin.DisplayName.Trim());
+    upsertCommand.Parameters.AddWithValue("@displayName", user.DisplayName.Trim());
     upsertCommand.Parameters.AddWithValue("@preferredLanguage", AppLanguages.Finnish);
 
     var userId = Convert.ToInt64(await upsertCommand.ExecuteScalarAsync());
@@ -41,7 +51,7 @@ public class UserService
     roleCommand.CommandText = @"
       INSERT OR IGNORE INTO UserRoles (userId, roleName) VALUES (@userId, @roleName);";
     roleCommand.Parameters.AddWithValue("@userId", userId);
-    roleCommand.Parameters.AddWithValue("@roleName", AppRoles.Admin);
+    roleCommand.Parameters.AddWithValue("@roleName", roleName);
     await roleCommand.ExecuteNonQueryAsync();
   }
 

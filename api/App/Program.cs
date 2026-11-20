@@ -34,6 +34,12 @@ public class Program
                 authOptions.Admin.Password = adminPassword;
             }
 
+            var tarotAdminPassword = Environment.GetEnvironmentVariable("KLAPI_TAROT_ADMIN_PASSWORD");
+            if (!string.IsNullOrWhiteSpace(tarotAdminPassword))
+            {
+                authOptions.TarotAdmin.Password = tarotAdminPassword;
+            }
+
             var siteApiKey = Environment.GetEnvironmentVariable("KLAPI_SITE_API_KEY");
             if (!string.IsNullOrWhiteSpace(siteApiKey))
             {
@@ -58,6 +64,13 @@ public class Program
             throw new InvalidOperationException("Auth:Admin username, password and display name must be configured.");
         }
 
+        if (string.IsNullOrWhiteSpace(authOptions.TarotAdmin.Username)
+            || string.IsNullOrWhiteSpace(authOptions.TarotAdmin.Password)
+            || string.IsNullOrWhiteSpace(authOptions.TarotAdmin.DisplayName))
+        {
+            throw new InvalidOperationException("Auth:TarotAdmin username, password and display name must be configured.");
+        }
+
         // Bind from the (possibly env-overridden) local instance, same as
         // EmailOptions below, so IOptions<AuthOptions> consumers see the
         // production env-var values too.
@@ -68,6 +81,7 @@ public class Program
             o.SigningKey = authOptions.SigningKey;
             o.AllowedOrigins = authOptions.AllowedOrigins;
             o.Admin = authOptions.Admin;
+            o.TarotAdmin = authOptions.TarotAdmin;
             o.SiteToSite = authOptions.SiteToSite;
         });
 
@@ -167,6 +181,15 @@ public class Program
             {
                 policy.RequireAuthenticatedUser();
                 policy.RequireRole(AppRoles.Admin);
+            });
+
+            // Tarot admin endpoints (used by the tarot site's /admin page) are
+            // for the dedicated tarot admin portal user only — not for klapi
+            // admins.
+            options.AddPolicy("HasTarotAdminRole", policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireRole(AppRoles.TarotAdmin);
             });
 
             // Tarot backend endpoints are machine-only: they authenticate
@@ -343,6 +366,7 @@ public class Program
         {
             var userService = scope.ServiceProvider.GetRequiredService<UserService>();
             userService.EnsureAdminUser(authOptions.Admin).GetAwaiter().GetResult();
+            userService.EnsureTarotAdminUser(authOptions.TarotAdmin).GetAwaiter().GetResult();
         }
 
         if (app.Environment.IsDevelopment())
