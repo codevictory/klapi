@@ -196,6 +196,79 @@ public class TarotService
     return await GetAllCards();
   }
 
+  // Updates the English title/description (canonical TarotCards columns plus
+  // the "en" translation row) and the Finnish title/description ("fi"
+  // translation row) of a single card. Returns null when the card does not
+  // exist.
+  public async Task<TarotCard?> UpdateCardLocalizedTexts(string cardId, TarotCardTextsUpdate texts)
+  {
+    await EnsureOpenConnection();
+
+    var normalizedId = cardId.Trim();
+    var now = DateTime.UtcNow.ToString("O");
+
+    using var transaction = _connection.BeginTransaction();
+
+    await using (var updateCardCommand = _connection.CreateCommand())
+    {
+      updateCardCommand.Transaction = transaction;
+      updateCardCommand.CommandText = @"
+        UPDATE TarotCards
+        SET title = @title,
+            description = @description,
+            lastUpdated = @lastUpdated
+        WHERE id = @cardId;";
+
+      updateCardCommand.Parameters.AddWithValue("@cardId", normalizedId);
+      updateCardCommand.Parameters.AddWithValue("@title", texts.EnglishTitle.Trim());
+      updateCardCommand.Parameters.AddWithValue("@description", texts.EnglishDescription);
+      updateCardCommand.Parameters.AddWithValue("@lastUpdated", now);
+
+      var affectedRows = await updateCardCommand.ExecuteNonQueryAsync();
+      if (affectedRows == 0)
+      {
+        transaction.Rollback();
+        return null;
+      }
+    }
+
+    // Upsert the localized rows. On insert the arcana is copied from the base
+    // row; on conflict only title/description are touched.
+    await using (var upsertTranslationCommand = _connection.CreateCommand())
+    {
+      upsertTranslationCommand.Transaction = transaction;
+      upsertTranslationCommand.CommandText = @"
+        INSERT INTO TarotCardTranslations (cardId, language, title, arcana, description)
+        VALUES (@cardId, @language, @title, (SELECT arcana FROM TarotCards WHERE id = @cardId), @description)
+        ON CONFLICT(cardId, language) DO UPDATE SET
+          title = excluded.title,
+          description = excluded.description;";
+
+      var cardIdParam = upsertTranslationCommand.Parameters.Add("@cardId", SqliteType.Text);
+      var languageParam = upsertTranslationCommand.Parameters.Add("@language", SqliteType.Text);
+      var titleParam = upsertTranslationCommand.Parameters.Add("@title", SqliteType.Text);
+      var descriptionParam = upsertTranslationCommand.Parameters.Add("@description", SqliteType.Text);
+
+      foreach (var (language, title, description) in new[]
+      {
+        (EnglishLanguage, texts.EnglishTitle, texts.EnglishDescription),
+        (AppLanguages.Finnish, texts.FinnishTitle, texts.FinnishDescription)
+      })
+      {
+        cardIdParam.Value = normalizedId;
+        languageParam.Value = language;
+        titleParam.Value = title.Trim();
+        descriptionParam.Value = description;
+        await upsertTranslationCommand.ExecuteNonQueryAsync();
+      }
+    }
+
+    transaction.Commit();
+
+    var cards = await GetAllCards();
+    return cards.FirstOrDefault(card => string.Equals(card.Id, normalizedId, StringComparison.OrdinalIgnoreCase));
+  }
+
   private static IReadOnlyDictionary<string, TarotCardTranslation> NormalizeTranslations(TarotCard card)
   {
     var translations = new Dictionary<string, TarotCardTranslation>(StringComparer.OrdinalIgnoreCase);

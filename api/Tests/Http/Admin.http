@@ -1,0 +1,31 @@
+@App_HostAddress = http://localhost:5013
+@AdminUsername = admin
+@AdminPassword = changeme
+
+### Sign in as a portal admin to get a JWT (paste the accessToken below)
+POST {{App_HostAddress}}/auth/token
+Content-Type: application/json
+Accept: application/json
+
+{
+  "username": "{{AdminUsername}}",
+  "password": "{{AdminPassword}}"
+}
+
+### Get all tarot cards (with translations) for the /admin portal — admin JWT required
+GET {{App_HostAddress}}/admin/tarot/cards
+Accept: application/json
+Authorization: Bearer <accessToken>
+
+### Update English + Finnish title/description of one card — admin JWT required
+PUT {{App_HostAddress}}/admin/tarot/cards/fool/texts
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer <accessToken>
+
+{
+  "englishTitle": "The Fool",
+  "englishDescription": "A leap of faith into the unknown.",
+  "finnishTitle": "Narri",
+  "finnishDescription": "Uskon hyppy tuntemattomaan."
+}

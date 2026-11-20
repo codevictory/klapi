@@ -225,6 +225,77 @@ public class ApiEndpointsTests(DevelopmentApiTestFactory factory) : IClassFixtur
     var emptySyncResponse = await client.PutAsJsonAsync("/tarot/cards", Array.Empty<object>());
     Assert.Equal(HttpStatusCode.BadRequest, emptySyncResponse.StatusCode);
   }
+
+  [Fact]
+  public async Task AdminTarotCards_GetAndUpdateTexts_WorksInDevelopment()
+  {
+    using var seedClient = factory.CreateClient();
+    seedClient.DefaultRequestHeaders.Add("X-API-Key", ApiTestFactoryBase.SiteApiKey);
+
+    var syncResponse = await seedClient.PutAsJsonAsync("/tarot/cards", new[]
+    {
+      new
+      {
+        id = "fool", title = "The Fool", arcana = "Major Arcana", image = "cards/fool.jpg", description = "A leap of faith.", sortOrder = 0,
+        translations = new
+        {
+          fi = new { title = "Narri", arcana = "Iso arkana", description = "Uskon hyppy." }
+        }
+      }
+    });
+    Assert.Equal(HttpStatusCode.OK, syncResponse.StatusCode);
+
+    // The development scheme authenticates every request with all roles.
+    var getResponse = await _client.GetAsync("/admin/tarot/cards");
+    Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+
+    var cards = await getResponse.Content.ReadFromJsonAsync<List<TarotCardDto>>();
+    Assert.NotNull(cards);
+    var fool = cards.Single(card => card.Id == "fool");
+    Assert.Equal("The Fool", fool.Title);
+    Assert.Equal("Narri", fool.Translations["fi"].Title);
+
+    var updateResponse = await _client.PutAsJsonAsync("/admin/tarot/cards/fool/texts", new
+    {
+      englishTitle = "The Fool (updated)",
+      englishDescription = "Updated EN description.",
+      finnishTitle = "Narri (päivitetty)",
+      finnishDescription = "Päivitetty FI kuvaus."
+    });
+    Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
+
+    var updated = await updateResponse.Content.ReadFromJsonAsync<TarotCardDto>();
+    Assert.NotNull(updated);
+    Assert.Equal("The Fool (updated)", updated.Title);
+    Assert.Equal("Updated EN description.", updated.Description);
+    Assert.Equal("The Fool (updated)", updated.Translations["en"].Title);
+    Assert.Equal("Narri (päivitetty)", updated.Translations["fi"].Title);
+    Assert.Equal("Päivitetty FI kuvaus.", updated.Translations["fi"].Description);
+
+    // The change is visible through the machine-only endpoint as well.
+    var machineGetResponse = await seedClient.GetAsync("/tarot/cards");
+    var machineCards = await machineGetResponse.Content.ReadFromJsonAsync<List<TarotCardDto>>();
+    Assert.NotNull(machineCards);
+    var foolAfter = machineCards.Single(card => card.Id == "fool");
+    Assert.Equal("The Fool (updated)", foolAfter.Title);
+    Assert.Equal("Päivitetty FI kuvaus.", foolAfter.Translations["fi"].Description);
+    // Upsert must not clobber the existing fi arcana.
+    Assert.Equal("Iso arkana", foolAfter.Translations["fi"].Arcana);
+
+    var notFoundResponse = await _client.PutAsJsonAsync("/admin/tarot/cards/nope/texts", new
+    {
+      englishTitle = "x",
+      finnishTitle = "y"
+    });
+    Assert.Equal(HttpStatusCode.NotFound, notFoundResponse.StatusCode);
+
+    var badRequestResponse = await _client.PutAsJsonAsync("/admin/tarot/cards/fool/texts", new
+    {
+      englishTitle = "  ",
+      finnishTitle = "y"
+    });
+    Assert.Equal(HttpStatusCode.BadRequest, badRequestResponse.StatusCode);
+  }
 }
 
 [Collection("ApiTests")]
@@ -399,6 +470,119 @@ public class ProductionAuthTests(ProductionApiTestFactory factory) : IClassFixtu
 
     var getResponse = await jwtClient.GetAsync("/tarot/cards");
     Assert.Equal(HttpStatusCode.Unauthorized, getResponse.StatusCode);
+  }
+
+  [Fact]
+  public async Task AdminTarotCards_RequireAdminRole_InProduction()
+  {
+    var getWithoutAuth = await _client.GetAsync("/admin/tarot/cards");
+    Assert.Equal(HttpStatusCode.Unauthorized, getWithoutAuth.StatusCode);
+
+    var putWithoutAuth = await _client.PutAsJsonAsync("/admin/tarot/cards/fool/texts", new
+    {
+      englishTitle = "x",
+      finnishTitle = "y"
+    });
+    Assert.Equal(HttpStatusCode.Unauthorized, putWithoutAuth.StatusCode);
+
+    // A portal user without the admin role gets 403.
+    var adminTokenResponse = await _client.PostAsJsonAsync("/auth/token", new
+    {
+      username = "admin",
+      password = "changeme"
+    });
+    var adminAuth = await adminTokenResponse.Content.ReadFromJsonAsync<AuthTokenDto>();
+    Assert.NotNull(adminAuth);
+    _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminAuth.AccessToken);
+
+    var createLokUserResponse = await _client.PostAsJsonAsync("/users", new
+    {
+      username = "lokuser",
+      password = "lokpass123",
+      displayName = "Lok User",
+      preferredLanguage = "fi",
+      roles = new[] { "lok" }
+    });
+    Assert.Equal(HttpStatusCode.Created, createLokUserResponse.StatusCode);
+
+    var lokTokenResponse = await _client.PostAsJsonAsync("/auth/token", new
+    {
+      username = "lokuser",
+      password = "lokpass123"
+    });
+    var lokAuth = await lokTokenResponse.Content.ReadFromJsonAsync<AuthTokenDto>();
+    Assert.NotNull(lokAuth);
+
+    using var lokClient = factory.CreateClient();
+    lokClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", lokAuth.AccessToken);
+
+    var forbiddenGet = await lokClient.GetAsync("/admin/tarot/cards");
+    Assert.Equal(HttpStatusCode.Forbidden, forbiddenGet.StatusCode);
+
+    var forbiddenPut = await lokClient.PutAsJsonAsync("/admin/tarot/cards/fool/texts", new
+    {
+      englishTitle = "x",
+      finnishTitle = "y"
+    });
+    Assert.Equal(HttpStatusCode.Forbidden, forbiddenPut.StatusCode);
+
+    var deleteResponse = await _client.DeleteAsync("/users/lokuser");
+    Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+  }
+
+  [Fact]
+  public async Task AdminTarotCards_AdminJwt_CanGetAndUpdateTexts_InProduction()
+  {
+    using var seedClient = factory.CreateClient();
+    seedClient.DefaultRequestHeaders.Add("X-API-Key", ApiTestFactoryBase.SiteApiKey);
+
+    var syncResponse = await seedClient.PutAsJsonAsync("/tarot/cards", new[]
+    {
+      new { id = "world", title = "The World", arcana = "Major Arcana", image = "cards/world.jpg", description = "Completion.", sortOrder = 21 }
+    });
+    Assert.Equal(HttpStatusCode.OK, syncResponse.StatusCode);
+
+    var tokenResponse = await _client.PostAsJsonAsync("/auth/token", new
+    {
+      username = "admin",
+      password = "changeme"
+    });
+    var auth = await tokenResponse.Content.ReadFromJsonAsync<AuthTokenDto>();
+    Assert.NotNull(auth);
+
+    using var adminClient = factory.CreateClient();
+    adminClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.AccessToken);
+
+    var getResponse = await adminClient.GetAsync("/admin/tarot/cards");
+    Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+
+    var cards = await getResponse.Content.ReadFromJsonAsync<List<TarotCardDto>>();
+    Assert.NotNull(cards);
+    Assert.Single(cards);
+
+    var updateResponse = await adminClient.PutAsJsonAsync("/admin/tarot/cards/world/texts", new
+    {
+      englishTitle = "The World!",
+      englishDescription = "Completion, updated.",
+      finnishTitle = "Maailma",
+      finnishDescription = "Täydellisyys."
+    });
+    Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
+
+    var updated = await updateResponse.Content.ReadFromJsonAsync<TarotCardDto>();
+    Assert.NotNull(updated);
+    Assert.Equal("The World!", updated.Title);
+    Assert.Equal("Completion, updated.", updated.Description);
+    Assert.Equal("Maailma", updated.Translations["fi"].Title);
+    Assert.Equal("Täydellisyys.", updated.Translations["fi"].Description);
+
+    // The machine-only endpoint sees the same change.
+    var machineGetResponse = await seedClient.GetAsync("/tarot/cards");
+    var machineCards = await machineGetResponse.Content.ReadFromJsonAsync<List<TarotCardDto>>();
+    Assert.NotNull(machineCards);
+    var world = machineCards.Single(card => card.Id == "world");
+    Assert.Equal("The World!", world.Title);
+    Assert.Equal("Maailma", world.Translations["fi"].Title);
   }
 }
 

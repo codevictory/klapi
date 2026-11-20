@@ -366,6 +366,7 @@ public class Program
         UserEndpoints.MapUserEndpoints(app);
         FeedbackEndpoints.MapFeedbackEndpoints(app);
         TarotEndpoints.MapTarotEndpoints(app);
+        AdminEndpoints.MapAdminEndpoints(app);
 
         app.Run();
     }

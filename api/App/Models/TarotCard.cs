@@ -7,6 +7,15 @@ public class TarotCardTranslation
   public string Description { get; set; } = string.Empty;
 }
 
+// English/Finnish title + description editable from the /admin portal.
+// English maps to the canonical base columns (plus the "en" translation
+// row); Finnish maps to the "fi" translation row.
+public record TarotCardTextsUpdate(
+  string EnglishTitle,
+  string EnglishDescription,
+  string FinnishTitle,
+  string FinnishDescription);
+
 public class TarotCard
 {
   public string Id { get; set; } = string.Empty;
