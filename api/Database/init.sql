@@ -33,7 +33,10 @@ CREATE TABLE IF NOT EXISTS TarotCards (
   image TEXT NOT NULL DEFAULT '',
   description TEXT NOT NULL DEFAULT '',
   sortOrder INTEGER NOT NULL DEFAULT 0,
-  lastUpdated TEXT NOT NULL DEFAULT ''
+  lastUpdated TEXT NOT NULL DEFAULT '',
+  -- Whether the card is tagged "Written by AI" on the tarot site.
+  -- 1 = show the tag (default for every card), 0 = hide it.
+  writtenByAi INTEGER NOT NULL DEFAULT 1
 );
 
 -- Localized card texts. The base TarotCards columns hold the canonical

@@ -296,6 +296,65 @@ public class ApiEndpointsTests(DevelopmentApiTestFactory factory) : IClassFixtur
     });
     Assert.Equal(HttpStatusCode.BadRequest, badRequestResponse.StatusCode);
   }
+
+  [Fact]
+  public async Task AdminTarotCards_WrittenByAi_ToggleWorksInDevelopment()
+  {
+    using var seedClient = factory.CreateClient();
+    seedClient.DefaultRequestHeaders.Add("X-API-Key", ApiTestFactoryBase.SiteApiKey);
+
+    var syncResponse = await seedClient.PutAsJsonAsync("/tarot/cards", new[]
+    {
+      new
+      {
+        id = "fool", title = "The Fool", arcana = "Major Arcana", image = "cards/fool.jpg", description = "A leap of faith.", sortOrder = 0
+      }
+    });
+    Assert.Equal(HttpStatusCode.OK, syncResponse.StatusCode);
+
+    // Synced without the field, the card defaults to tagged.
+    var getResponse = await _client.GetAsync("/admin/tarot/cards");
+    var cards = await getResponse.Content.ReadFromJsonAsync<List<TarotCardDto>>();
+    Assert.NotNull(cards);
+    Assert.True(cards.Single(card => card.Id == "fool").WrittenByAi);
+
+    var offResponse = await _client.PutAsJsonAsync("/admin/tarot/cards/fool/written-by-ai", new { writtenByAi = false });
+    Assert.Equal(HttpStatusCode.OK, offResponse.StatusCode);
+
+    var updated = await offResponse.Content.ReadFromJsonAsync<TarotCardDto>();
+    Assert.NotNull(updated);
+    Assert.False(updated.WrittenByAi);
+
+    // The change is visible through the machine-only endpoint as well.
+    var machineGetResponse = await seedClient.GetAsync("/tarot/cards");
+    var machineCards = await machineGetResponse.Content.ReadFromJsonAsync<List<TarotCardDto>>();
+    Assert.NotNull(machineCards);
+    Assert.False(machineCards.Single(card => card.Id == "fool").WrittenByAi);
+
+    // Re-syncing the card without the field must not reset the flag.
+    var syncAgainResponse = await seedClient.PutAsJsonAsync("/tarot/cards", new[]
+    {
+      new { id = "fool", title = "The Fool", arcana = "Major Arcana", image = "cards/fool.jpg", description = "New desc.", sortOrder = 0 }
+    });
+    Assert.Equal(HttpStatusCode.OK, syncAgainResponse.StatusCode);
+
+    var getAfterSyncResponse = await _client.GetAsync("/admin/tarot/cards");
+    var cardsAfterSync = await getAfterSyncResponse.Content.ReadFromJsonAsync<List<TarotCardDto>>();
+    Assert.NotNull(cardsAfterSync);
+    Assert.False(cardsAfterSync.Single(card => card.Id == "fool").WrittenByAi);
+
+    var onResponse = await _client.PutAsJsonAsync("/admin/tarot/cards/fool/written-by-ai", new { writtenByAi = true });
+    Assert.Equal(HttpStatusCode.OK, onResponse.StatusCode);
+    var onCard = await onResponse.Content.ReadFromJsonAsync<TarotCardDto>();
+    Assert.NotNull(onCard);
+    Assert.True(onCard.WrittenByAi);
+
+    var badRequestResponse = await _client.PutAsJsonAsync("/admin/tarot/cards/fool/written-by-ai", new { });
+    Assert.Equal(HttpStatusCode.BadRequest, badRequestResponse.StatusCode);
+
+    var notFoundResponse = await _client.PutAsJsonAsync("/admin/tarot/cards/nope/written-by-ai", new { writtenByAi = true });
+    Assert.Equal(HttpStatusCode.NotFound, notFoundResponse.StatusCode);
+  }
 }
 
 [Collection("ApiTests")]
@@ -526,6 +585,9 @@ public class ProductionAuthTests(ProductionApiTestFactory factory) : IClassFixtu
     });
     Assert.Equal(HttpStatusCode.Forbidden, forbiddenPut.StatusCode);
 
+    var forbiddenWrittenByAiPut = await lokClient.PutAsJsonAsync("/admin/tarot/cards/fool/written-by-ai", new { writtenByAi = false });
+    Assert.Equal(HttpStatusCode.Forbidden, forbiddenWrittenByAiPut.StatusCode);
+
     // The klapi admin role alone must NOT open the tarot admin endpoints:
     // tarot has its own credentials.
     using var adminClient = factory.CreateClient();
@@ -651,6 +713,18 @@ public class ProductionAuthTests(ProductionApiTestFactory factory) : IClassFixtu
     var world = machineCards.Single(card => card.Id == "world");
     Assert.Equal("The World!", world.Title);
     Assert.Equal("Maailma", world.Translations["fi"].Title);
+
+    // The tarot admin can also toggle the per-card "Written by AI" flag.
+    var toggleResponse = await tarotAdminClient.PutAsJsonAsync("/admin/tarot/cards/world/written-by-ai", new { writtenByAi = false });
+    Assert.Equal(HttpStatusCode.OK, toggleResponse.StatusCode);
+    var toggled = await toggleResponse.Content.ReadFromJsonAsync<TarotCardDto>();
+    Assert.NotNull(toggled);
+    Assert.False(toggled.WrittenByAi);
+
+    var machineGetAfterToggle = await seedClient.GetAsync("/tarot/cards");
+    var machineCardsAfterToggle = await machineGetAfterToggle.Content.ReadFromJsonAsync<List<TarotCardDto>>();
+    Assert.NotNull(machineCardsAfterToggle);
+    Assert.False(machineCardsAfterToggle.Single(card => card.Id == "world").WrittenByAi);
   }
 }
 
@@ -839,6 +913,8 @@ public class TarotCardDto
   public string Description { get; set; } = string.Empty;
 
   public int SortOrder { get; set; }
+
+  public bool WrittenByAi { get; set; }
 
   public Dictionary<string, TarotCardTranslationDto> Translations { get; set; } = new();
 }

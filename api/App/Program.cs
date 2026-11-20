@@ -354,6 +354,17 @@ public class Program
                     command.ExecuteNonQuery();
                 }
 
+                // Migration: add writtenByAi to TarotCards if missing. DEFAULT 1
+                // backfills every existing card with the "Written by AI" tag on.
+                command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('TarotCards') WHERE name = 'writtenByAi';";
+                var tarotCardsHasWrittenByAi = Convert.ToInt32(command.ExecuteScalar()) > 0;
+
+                if (!tarotCardsHasWrittenByAi)
+                {
+                    command.CommandText = "ALTER TABLE TarotCards ADD COLUMN writtenByAi INTEGER NOT NULL DEFAULT 1;";
+                    command.ExecuteNonQuery();
+                }
+
                 command.CommandText = @"
                     UPDATE Users
                     SET preferredLanguage = 'fi'

@@ -31,6 +31,11 @@ public class TarotCard
 
   public int SortOrder { get; set; }
 
+  // Whether the card is tagged "Written by AI" on the tarot site. Stored as
+  // writtenByAi (1/0) in the TarotCards table; defaults to true so every card
+  // is tagged unless the admin turns it off for that card.
+  public bool WrittenByAi { get; set; } = true;
+
   // Localized texts keyed by language code (e.g. "en", "fi"); see
   // TarotCardTranslations table. Always contains at least "en".
   public Dictionary<string, TarotCardTranslation> Translations { get; set; } = new();

@@ -9,6 +9,8 @@ public record AdminCardTextsUpdateRequest(
   string? FinnishTitle,
   string? FinnishDescription);
 
+public record AdminCardWrittenByAiUpdateRequest(bool? WrittenByAi);
+
 public static class AdminEndpoints
 {
   public static void MapAdminEndpoints(WebApplication app)
@@ -95,5 +97,50 @@ public static class AdminEndpoints
     .RequireCors("FrontendWriteCors")
     .RequireAuthorization("HasTarotAdminRole")
     .WithName("UpdateAdminTarotCardTexts");
+
+    app.MapPut("/admin/tarot/cards/{cardId}/written-by-ai", async (HttpContext httpContext, string cardId) =>
+    {
+      var tarotService = httpContext.RequestServices.GetRequiredService<TarotService>();
+      var request = await httpContext.Request.ReadFromJsonAsync<AdminCardWrittenByAiUpdateRequest>();
+
+      if (request is null || request.WrittenByAi is null)
+      {
+        httpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+        await httpContext.Response.WriteAsJsonAsync(new
+        {
+          Message = "Request body with a boolean writtenByAi field is required."
+        });
+        return;
+      }
+
+      var normalizedCardId = cardId.Trim();
+
+      if (normalizedCardId.Length == 0)
+      {
+        httpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+        await httpContext.Response.WriteAsJsonAsync(new
+        {
+          Message = "Card id is required."
+        });
+        return;
+      }
+
+      var updatedCard = await tarotService.UpdateCardWrittenByAi(normalizedCardId, request.WrittenByAi.Value);
+
+      if (updatedCard is null)
+      {
+        httpContext.Response.StatusCode = StatusCodes.Status404NotFound;
+        await httpContext.Response.WriteAsJsonAsync(new
+        {
+          Message = "Card not found."
+        });
+        return;
+      }
+
+      await httpContext.Response.WriteAsJsonAsync(updatedCard);
+    })
+    .RequireCors("FrontendWriteCors")
+    .RequireAuthorization("HasTarotAdminRole")
+    .WithName("UpdateAdminTarotCardWrittenByAi");
   }
 }

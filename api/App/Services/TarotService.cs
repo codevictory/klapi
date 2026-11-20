@@ -21,7 +21,7 @@ public class TarotService
     await using (var command = _connection.CreateCommand())
     {
       command.CommandText = @"
-        SELECT id, title, arcana, image, description, sortOrder
+        SELECT id, title, arcana, image, description, sortOrder, writtenByAi
         FROM TarotCards
         ORDER BY sortOrder ASC, id ASC;";
 
@@ -99,9 +99,13 @@ public class TarotService
     await using (var upsertCommand = _connection.CreateCommand())
     {
       upsertCommand.Transaction = transaction;
+      // writtenByAi is deliberately NOT updated on conflict: the flag is
+      // managed per card from the /admin portal, not by the data sync, so a
+      // re-sync must not reset it. New cards get the synced value (the model
+      // defaults to true when the payload omits the field).
       upsertCommand.CommandText = @"
-        INSERT INTO TarotCards (id, title, arcana, image, description, sortOrder, lastUpdated)
-        VALUES (@id, @title, @arcana, @image, @description, @sortOrder, @lastUpdated)
+        INSERT INTO TarotCards (id, title, arcana, image, description, sortOrder, lastUpdated, writtenByAi)
+        VALUES (@id, @title, @arcana, @image, @description, @sortOrder, @lastUpdated, @writtenByAi)
         ON CONFLICT(id) DO UPDATE SET
           title = excluded.title,
           arcana = excluded.arcana,
@@ -117,6 +121,7 @@ public class TarotService
       var descriptionParam = upsertCommand.Parameters.Add("@description", SqliteType.Text);
       var sortOrderParam = upsertCommand.Parameters.Add("@sortOrder", SqliteType.Integer);
       var lastUpdatedParam = upsertCommand.Parameters.Add("@lastUpdated", SqliteType.Text);
+      var writtenByAiParam = upsertCommand.Parameters.Add("@writtenByAi", SqliteType.Integer);
 
       foreach (var card in cards)
       {
@@ -127,6 +132,7 @@ public class TarotService
         descriptionParam.Value = card.Description;
         sortOrderParam.Value = card.SortOrder;
         lastUpdatedParam.Value = now;
+        writtenByAiParam.Value = card.WrittenByAi ? 1 : 0;
         await upsertCommand.ExecuteNonQueryAsync();
       }
     }
@@ -269,6 +275,38 @@ public class TarotService
     return cards.FirstOrDefault(card => string.Equals(card.Id, normalizedId, StringComparison.OrdinalIgnoreCase));
   }
 
+  // Toggles the "Written by AI" tag of a single card. Returns null when the
+  // card does not exist.
+  public async Task<TarotCard?> UpdateCardWrittenByAi(string cardId, bool writtenByAi)
+  {
+    await EnsureOpenConnection();
+
+    var normalizedId = cardId.Trim();
+    var now = DateTime.UtcNow.ToString("O");
+
+    await using (var command = _connection.CreateCommand())
+    {
+      command.CommandText = @"
+        UPDATE TarotCards
+        SET writtenByAi = @writtenByAi,
+            lastUpdated = @lastUpdated
+        WHERE id = @cardId;";
+
+      command.Parameters.AddWithValue("@cardId", normalizedId);
+      command.Parameters.AddWithValue("@writtenByAi", writtenByAi ? 1 : 0);
+      command.Parameters.AddWithValue("@lastUpdated", now);
+
+      var affectedRows = await command.ExecuteNonQueryAsync();
+      if (affectedRows == 0)
+      {
+        return null;
+      }
+    }
+
+    var cards = await GetAllCards();
+    return cards.FirstOrDefault(card => string.Equals(card.Id, normalizedId, StringComparison.OrdinalIgnoreCase));
+  }
+
   private static IReadOnlyDictionary<string, TarotCardTranslation> NormalizeTranslations(TarotCard card)
   {
     var translations = new Dictionary<string, TarotCardTranslation>(StringComparer.OrdinalIgnoreCase);
@@ -311,7 +349,8 @@ public class TarotService
       Arcana = reader["arcana"]?.ToString() ?? string.Empty,
       Image = reader["image"]?.ToString() ?? string.Empty,
       Description = reader["description"]?.ToString() ?? string.Empty,
-      SortOrder = reader["sortOrder"] is long sortOrder ? (int)sortOrder : Convert.ToInt32(reader["sortOrder"])
+      SortOrder = reader["sortOrder"] is long sortOrder ? (int)sortOrder : Convert.ToInt32(reader["sortOrder"]),
+      WrittenByAi = reader["writtenByAi"] is long writtenByAi && writtenByAi != 0
     };
   }
 
