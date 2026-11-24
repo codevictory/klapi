@@ -101,3 +101,17 @@ CREATE TABLE IF NOT EXISTS VihkotappeluFactionUnits (
   unitKey TEXT NOT NULL REFERENCES VihkotappeluUnits(unitKey) ON DELETE CASCADE,
   PRIMARY KEY (factionId, unitKey)
 );
+
+-- Vihkotappelu sprites: pixel-art icons drawn by the vihkotappelu browser
+-- client. `pixels` holds the whole grid as JSON: height rows x width cells,
+-- each cell null (transparent), a hex color '#rrggbb'/'#rrggbbaa', or the
+-- sentinel 'side' (the owning side's faction color, see VihkotappeluFactions.color).
+-- Served as part of the bulk GET /vihkotappelu/data payload.
+CREATE TABLE IF NOT EXISTS VihkotappeluSprites (
+  spriteKey TEXT PRIMARY KEY,
+  width INTEGER NOT NULL DEFAULT 16,
+  height INTEGER NOT NULL DEFAULT 16,
+  pixels TEXT NOT NULL DEFAULT '[]',
+  sortOrder INTEGER NOT NULL DEFAULT 0,
+  lastUpdated TEXT NOT NULL DEFAULT ''
+);

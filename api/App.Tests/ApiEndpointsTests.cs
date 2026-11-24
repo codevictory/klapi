@@ -234,7 +234,7 @@ public class ApiEndpointsTests(DevelopmentApiTestFactory factory) : IClassFixtur
 
     var syncWithoutKey = await _client.PutAsJsonAsync("/vihkotappelu/data", new
     {
-      units = new[] { new { unitKey = "spearman", hp = 30 } },
+      units = new[] { new { unitKey = "soldiers_of_falroth", hp = 26 } },
       factions = Array.Empty<object>()
     });
     Assert.Equal(HttpStatusCode.Unauthorized, syncWithoutKey.StatusCode);
@@ -283,6 +283,19 @@ public class ApiEndpointsTests(DevelopmentApiTestFactory factory) : IClassFixtur
           },
           units = new[] { "soldiers_of_falroth", "catapult" }
         }
+      },
+      sprites = new object[]
+      {
+        new
+        {
+          spriteKey = "soldiers_of_falroth", width = 2, height = 2, sortOrder = 0,
+          pixels = new[] { new string?[] { "#92400e", null }, new string?[] { "side", "#facc15a6" } }
+        },
+        new
+        {
+          spriteKey = "catapult", width = 1, height = 1, sortOrder = 1,
+          pixels = new[] { new string?[] { "#d6d3d1" } }
+        }
       }
     };
 
@@ -318,6 +331,18 @@ public class ApiEndpointsTests(DevelopmentApiTestFactory factory) : IClassFixtur
     Assert.Equal("Dalmen", data.Factions[0].Translations["fi"].Name);
     Assert.Equal(new[] { "soldiers_of_falroth", "catapult" }, data.Factions[0].Units);
 
+    // Sprites round-trip: pixel grids come back as sent ('side' sentinel and
+    // nulls included).
+    Assert.NotNull(data.Sprites);
+    Assert.Equal(2, data.Sprites.Count);
+    var falrothSprite = data.Sprites.Single(s => s.SpriteKey == "soldiers_of_falroth");
+    Assert.Equal(2, falrothSprite.Width);
+    Assert.Equal(2, falrothSprite.Height);
+    Assert.Equal("#92400e", falrothSprite.Pixels[0][0]);
+    Assert.Null(falrothSprite.Pixels[0][1]);
+    Assert.Equal("side", falrothSprite.Pixels[1][0]);
+    Assert.Equal("#facc15a6", falrothSprite.Pixels[1][1]);
+
     // Re-sync with a subset: removed units/factions disappear, and a faction
     // referencing an unknown unit is rejected.
     var syncAgainPayload = new
@@ -342,6 +367,28 @@ public class ApiEndpointsTests(DevelopmentApiTestFactory factory) : IClassFixtur
     Assert.Equal("Updated.", dataAfterSync.Units[0].Description);
     Assert.False(dataAfterSync.Units[0].Translations.ContainsKey("fi"));
     Assert.Single(dataAfterSync.Factions);
+
+    // A payload without a "sprites" field leaves the stored sprites unchanged.
+    Assert.NotNull(dataAfterSync.Sprites);
+    Assert.Equal(2, dataAfterSync.Sprites.Count);
+
+    // Sprite payloads are validated: bad pixel colors and dangling
+    // unit.sprite references are rejected.
+    var badPixelResponse = await client.PutAsJsonAsync("/vihkotappelu/data", new
+    {
+      units = new[] { new { unitKey = "catapult", hp = 10, sprite = "catapult" } },
+      factions = new[] { new { id = "dalmen", units = new[] { "catapult" } } },
+      sprites = new[] { new { spriteKey = "catapult", width = 1, height = 1, pixels = new[] { new string?[] { "red" } } } }
+    });
+    Assert.Equal(HttpStatusCode.BadRequest, badPixelResponse.StatusCode);
+
+    var danglingSpriteResponse = await client.PutAsJsonAsync("/vihkotappelu/data", new
+    {
+      units = new[] { new { unitKey = "catapult", hp = 10, sprite = "no_such_sprite" } },
+      factions = new[] { new { id = "dalmen", units = new[] { "catapult" } } },
+      sprites = new[] { new { spriteKey = "catapult", width = 1, height = 1, pixels = new[] { new string?[] { "#d6d3d1" } } } }
+    });
+    Assert.Equal(HttpStatusCode.BadRequest, danglingSpriteResponse.StatusCode);
 
     var danglingResponse = await client.PutAsJsonAsync("/vihkotappelu/data", new
     {
@@ -667,7 +714,7 @@ public class ProductionAuthTests(ProductionApiTestFactory factory) : IClassFixtu
 
     var syncWithoutKey = await _client.PutAsJsonAsync("/vihkotappelu/data", new
     {
-      units = new[] { new { unitKey = "spearman", hp = 30 } },
+      units = new[] { new { unitKey = "soldiers_of_falroth", hp = 26 } },
       factions = Array.Empty<object>()
     });
     Assert.Equal(HttpStatusCode.Unauthorized, syncWithoutKey.StatusCode);
@@ -688,13 +735,13 @@ public class ProductionAuthTests(ProductionApiTestFactory factory) : IClassFixtu
     {
       units = new[]
       {
-        new { unitKey = "spearman", name = "Spearman", description = "Sturdy.", hp = 30, attack = 8, defence = 3, movement = 3, range = 2, minRange = 1, sprite = "spearman", sortOrder = 0 },
-        new { unitKey = "archer", name = "Archer", description = "", hp = 18, attack = 7, defence = 1, movement = 3, range = 4, minRange = 2, sprite = "archer", sortOrder = 1 }
+        new { unitKey = "soldiers_of_falroth", name = "Soldiers of Falroth", description = "", hp = 26, attack = 9, defence = 3, movement = 3, range = 1, minRange = 1, sprite = "soldiers_of_falroth", sortOrder = 0 },
+        new { unitKey = "riders_of_nezek", name = "Riders of Nezek", description = "", hp = 13, attack = 6, defence = 2, movement = 5, range = 4, minRange = 1, sprite = "riders_of_nezek", sortOrder = 1 }
       },
       factions = new[]
       {
-        new { id = "dalmen", name = "Dalmen", color = "#22c55e", sortOrder = 0, units = new[] { "spearman" } },
-        new { id = "zhaglon", name = "Zhaglon", color = "#a855f7", sortOrder = 1, units = new[] { "archer" } }
+        new { id = "dalmen", name = "Dalmen", color = "#22c55e", sortOrder = 0, units = new[] { "soldiers_of_falroth" } },
+        new { id = "zhaglon", name = "Zhaglon", color = "#a855f7", sortOrder = 1, units = new[] { "riders_of_nezek" } }
       }
     };
 
@@ -708,8 +755,8 @@ public class ProductionAuthTests(ProductionApiTestFactory factory) : IClassFixtu
     Assert.NotNull(data);
     Assert.Equal(2, data.Units.Count);
     Assert.Equal(2, data.Factions.Count);
-    Assert.Equal("spearman", data.Factions[0].Units[0]);
-    Assert.Equal("archer", data.Factions[1].Units[0]);
+    Assert.Equal("soldiers_of_falroth", data.Factions[0].Units[0]);
+    Assert.Equal("riders_of_nezek", data.Factions[1].Units[0]);
   }
 
   [Fact]
@@ -1175,9 +1222,24 @@ public class VihkotappeluFactionDto
   public List<string> Units { get; set; } = [];
 }
 
+public class VihkotappeluSpriteDto
+{
+  public string SpriteKey { get; set; } = string.Empty;
+
+  public int Width { get; set; }
+
+  public int Height { get; set; }
+
+  public List<List<string?>> Pixels { get; set; } = [];
+
+  public int SortOrder { get; set; }
+}
+
 public class VihkotappeluGameDataDto
 {
   public List<VihkotappeluUnitDto> Units { get; set; } = [];
 
   public List<VihkotappeluFactionDto> Factions { get; set; } = [];
+
+  public List<VihkotappeluSpriteDto>? Sprites { get; set; }
 }

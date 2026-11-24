@@ -1,12 +1,16 @@
 @App_HostAddress = http://localhost:5013
 @SiteApiKey = dev-site-api-key-0123456789abcdef
 
-### Get ALL vihkotappelu game data (units + factions) in a single bulk request — site-to-site API key required
+### Get ALL vihkotappelu game data (units + factions + sprites) in a single bulk request — site-to-site API key required
 GET {{App_HostAddress}}/vihkotappelu/data
 Accept: application/json
 X-API-Key: {{SiteApiKey}}
 
 ### Replace the whole game data (bulk sync, site-to-site API key required)
+### "sprites" is optional: when present it fully replaces VihkotappeluSprites
+### and every unit.sprite must reference one of its spriteKeys; when absent
+### the stored sprites are kept. Pixel cells: null (transparent), "#rrggbb"/
+### "#rrggbbaa", or "side" (the owning side's faction color).
 PUT {{App_HostAddress}}/vihkotappelu/data
 Content-Type: application/json
 Accept: application/json
@@ -43,6 +47,18 @@ X-API-Key: {{SiteApiKey}}
         "fi": { "name": "Dalmen" }
       },
       "units": ["soldiers_of_falroth"]
+    }
+  ],
+  "sprites": [
+    {
+      "spriteKey": "soldiers_of_falroth",
+      "width": 2,
+      "height": 2,
+      "sortOrder": 0,
+      "pixels": [
+        ["#92400e", null],
+        ["side", "#facc15a6"]
+      ]
     }
   ]
 }

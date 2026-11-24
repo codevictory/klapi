@@ -76,16 +76,26 @@ Always prefer the just recipes (`just --list`):
 - Site-to-site data endpoints: `GET/PUT /tarot/cards` (TarotCards +
   TarotCardTranslations tables) and `GET/PUT /vihkotappelu/data`
   (VihkotappeluUnits, VihkotappeluUnitTranslations, VihkotappeluFactions,
-  VihkotappeluFactionTranslations, VihkotappeluFactionUnits tables) hold the
-  card texts / game unit+faction data consumed by the tarot and vihkotappelu
-  sites. Base columns are the canonical English texts; per-language texts live
-  in the translation tables. Consumers fetch everything in ONE bulk call and
-  push updates with the bulk PUT. The canonical SEED for these datasets lives
-  in this repo as SQL: `api/Database/reset-tarot-cards.sql` and
+  VihkotappeluFactionTranslations, VihkotappeluFactionUnits,
+  VihkotappeluSprites tables) hold the card texts / game unit+faction+sprite
+  data consumed by the tarot and vihkotappelu sites. Base columns are the
+  canonical English texts; per-language texts live in the translation tables.
+  Consumers fetch everything in ONE bulk call and push updates with the bulk
+  PUT. The canonical SEED for these datasets lives in this repo as SQL:
+  `api/Database/reset-tarot-cards.sql` and
   `api/Database/reset-vihkotappelu.sql` (run via `just reset-tarot-cards` /
   `just reset-vihkotappelu`); the vihkotappelu repo holds no data files — its
   `tools/fetch_game_data.js` / `tools/sync_to_klapi.js` dump and push a JSON
   payload over the bulk endpoints.
+- Vihkotappelu sprites: `VihkotappeluSprites.pixels` stores each sprite as a
+  JSON grid (height rows x width cells; cell = null transparent, `#rrggbb` /
+  `#rrggbbaa`, or the sentinel `"side"` = the owning side's faction color).
+  GET returns them as `sprites: [{ spriteKey, width, height, sortOrder,
+  pixels }]`. On PUT, `sprites` is optional: when present it fully replaces
+  the table and every `unit.sprite` must reference one of its spriteKeys
+  (400 otherwise, along with malformed grids/colors); when absent the stored
+  sprites are kept. Single-pixel edits in SQL:
+  `UPDATE VihkotappeluSprites SET pixels = json_set(pixels, '$[y][x]', '#ff0000') WHERE spriteKey = 'soldiers_of_falroth';`
 - Secrets come from configuration / environment variables
   (`KLAPI_ADMIN_PASSWORD`, `KLAPI_TAROT_ADMIN_PASSWORD`, `KLAPI_SITE_API_KEY`,
   `Auth:SigningKey` ≥ 32 chars). Never hardcode secrets or commit them.

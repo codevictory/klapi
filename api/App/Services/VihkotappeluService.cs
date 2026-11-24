@@ -1,4 +1,5 @@
 using System.Data;
+using System.Text.Json;
 using Microsoft.Data.Sqlite;
 
 public class VihkotappeluService
@@ -140,7 +141,45 @@ public class VihkotappeluService
       }
     }
 
+    await using (var command = _connection.CreateCommand())
+    {
+      command.CommandText = @"
+        SELECT spriteKey, width, height, pixels, sortOrder
+        FROM VihkotappeluSprites
+        ORDER BY sortOrder ASC, spriteKey ASC;";
+
+      await using var reader = await command.ExecuteReaderAsync();
+      while (await reader.ReadAsync())
+      {
+        data.Sprites ??= [];
+        data.Sprites.Add(ReadSprite(reader));
+      }
+    }
+
     return data;
+  }
+
+  private static VihkotappeluSprite ReadSprite(SqliteDataReader reader)
+  {
+    var pixelsJson = reader["pixels"]?.ToString() ?? "[]";
+    List<List<string?>> pixels;
+    try
+    {
+      pixels = JsonSerializer.Deserialize<List<List<string?>>>(pixelsJson) ?? [];
+    }
+    catch (JsonException)
+    {
+      pixels = [];
+    }
+
+    return new VihkotappeluSprite
+    {
+      SpriteKey = reader["spriteKey"]?.ToString() ?? string.Empty,
+      Width = reader["width"] is long width ? (int)width : Convert.ToInt32(reader["width"]),
+      Height = reader["height"] is long height ? (int)height : Convert.ToInt32(reader["height"]),
+      Pixels = pixels,
+      SortOrder = reader["sortOrder"] is long sortOrder ? (int)sortOrder : Convert.ToInt32(reader["sortOrder"])
+    };
   }
 
   public async Task<VihkotappeluGameData> Sync(VihkotappeluGameData data)
@@ -322,6 +361,65 @@ public class VihkotappeluService
           insUnitKeyParam.Value = unitKey;
           await insertLinkCommand.ExecuteNonQueryAsync();
         }
+      }
+    }
+
+    // Sprites are only replaced when the payload carries a "sprites" field
+    // (null means "leave the stored sprites unchanged").
+    if (data.Sprites is not null)
+    {
+      await using (var upsertSpriteCommand = _connection.CreateCommand())
+      {
+        upsertSpriteCommand.Transaction = transaction;
+        upsertSpriteCommand.CommandText = @"
+          INSERT INTO VihkotappeluSprites (spriteKey, width, height, pixels, sortOrder, lastUpdated)
+          VALUES (@spriteKey, @width, @height, @pixels, @sortOrder, @lastUpdated)
+          ON CONFLICT(spriteKey) DO UPDATE SET
+            width = excluded.width,
+            height = excluded.height,
+            pixels = excluded.pixels,
+            sortOrder = excluded.sortOrder,
+            lastUpdated = excluded.lastUpdated;";
+
+        var spriteKeyParam = upsertSpriteCommand.Parameters.Add("@spriteKey", SqliteType.Text);
+        var widthParam = upsertSpriteCommand.Parameters.Add("@width", SqliteType.Integer);
+        var heightParam = upsertSpriteCommand.Parameters.Add("@height", SqliteType.Integer);
+        var pixelsParam = upsertSpriteCommand.Parameters.Add("@pixels", SqliteType.Text);
+        var sortOrderParam = upsertSpriteCommand.Parameters.Add("@sortOrder", SqliteType.Integer);
+        var lastUpdatedParam = upsertSpriteCommand.Parameters.Add("@lastUpdated", SqliteType.Text);
+
+        foreach (var sprite in data.Sprites)
+        {
+          spriteKeyParam.Value = sprite.SpriteKey;
+          widthParam.Value = sprite.Width;
+          heightParam.Value = sprite.Height;
+          pixelsParam.Value = JsonSerializer.Serialize(sprite.Pixels ?? []);
+          sortOrderParam.Value = sprite.SortOrder;
+          lastUpdatedParam.Value = now;
+          await upsertSpriteCommand.ExecuteNonQueryAsync();
+        }
+      }
+
+      // Remove sprites that are no longer in the payload.
+      await using (var deleteSpritesCommand = _connection.CreateCommand())
+      {
+        deleteSpritesCommand.Transaction = transaction;
+
+        if (data.Sprites.Count == 0)
+        {
+          deleteSpritesCommand.CommandText = "DELETE FROM VihkotappeluSprites;";
+        }
+        else
+        {
+          var keyParameters = string.Join(", ", data.Sprites.Select((_, index) => $"@spriteKey{index}"));
+          deleteSpritesCommand.CommandText = $"DELETE FROM VihkotappeluSprites WHERE spriteKey NOT IN ({keyParameters});";
+          for (var index = 0; index < data.Sprites.Count; index++)
+          {
+            deleteSpritesCommand.Parameters.AddWithValue($"@spriteKey{index}", data.Sprites[index].SpriteKey);
+          }
+        }
+
+        await deleteSpritesCommand.ExecuteNonQueryAsync();
       }
     }
 

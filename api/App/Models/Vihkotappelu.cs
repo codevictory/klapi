@@ -61,11 +61,31 @@ public class VihkotappeluFaction
   public List<string> Units { get; set; } = [];
 }
 
-// The whole vihkotappelu game data in one payload: the unit definitions and
-// the factions (sides). Fetched by the vihkotappelu server in ONE bulk call.
+public class VihkotappeluSprite
+{
+  public string SpriteKey { get; set; } = string.Empty;
+
+  public int Width { get; set; } = 16;
+
+  public int Height { get; set; } = 16;
+
+  // The pixel grid as height rows x width cells. Each cell is null
+  // (transparent), a hex color "#rrggbb"/"#rrggbbaa", or the sentinel
+  // "side" (the owning side's faction color, see VihkotappeluFactions.Color).
+  public List<List<string?>> Pixels { get; set; } = [];
+
+  public int SortOrder { get; set; }
+}
+
+// The whole vihkotappelu game data in one payload: the unit definitions, the
+// factions (sides) and the sprites. Fetched by the vihkotappelu server in ONE
+// bulk call. Sprites is null when the payload does not carry sprites (PUT
+// then keeps the stored sprites unchanged).
 public class VihkotappeluGameData
 {
   public List<VihkotappeluUnit> Units { get; set; } = [];
 
   public List<VihkotappeluFaction> Factions { get; set; } = [];
+
+  public List<VihkotappeluSprite>? Sprites { get; set; }
 }
