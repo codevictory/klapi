@@ -23,8 +23,8 @@ Layout:
 
 ```
 api/                  .NET 10 ASP.NET Core API (solution: api/Api.slnx, project: api/App)
-  App/Endpoints/      minimal-API endpoint groups (Admin, Auth, Feedback, Lok, System, Tarot, User)
-  App/Services/       business logic (LokService, TarotService, UserService, ...)
+  App/Endpoints/      minimal-API endpoint groups (Admin, Auth, Feedback, Lok, System, Tarot, User, Vihkotappelu)
+  App/Services/       business logic (LokService, TarotService, UserService, VihkotappeluService, ...)
   App/Models/         DTOs / models
   App/Auth/           auth handlers (JWT bearer, site-to-site API key, development handler)
   App/Program.cs      startup; also runs incremental SQLite migrations at boot
@@ -55,6 +55,7 @@ Always prefer the just recipes (`just --list`):
 | UI install / dev / build / test / lint | `just ui-install`, `just ui-dev`, `just ui-build`, `just ui-test`, `just ui-lint` |
 | Database setup / reset / shell | `just db-setup`, `just db-reset`, `just db-shell` |
 | Reset TarotCards to the canonical 78 cards | `just reset-tarot-cards` |
+| Reset vihkotappelu game data to the canonical seed | `just reset-vihkotappelu` |
 | Production deploy | `just deploy` — **only when the user explicitly asks** |
 
 ## API conventions (.NET, `api/`)
@@ -67,7 +68,24 @@ Always prefer the just recipes (`just --list`):
   are applied by migrations in `App/Program.cs` at startup.
 - Auth: JWT bearer tokens for users, a site-to-site API key
   (`Auth:SiteToSite:ApiKey`) for machine clients, plus a development auth
-  handler. Roles used by the UI: `lok`, `admin`, `tarot-admin`.
+  handler. Roles used by the UI: `lok`, `admin`, `tarot-admin`. The site-to-site
+  key grants the machine-only roles `tarot` and `vihkotappelu` (one per
+  consuming site); those roles are not assignable to portal users and the
+  machine endpoints (`/tarot/cards`, `/vihkotappelu/data`) authenticate
+  exclusively via the `SiteApiKey` scheme — never via portal JWT.
+- Site-to-site data endpoints: `GET/PUT /tarot/cards` (TarotCards +
+  TarotCardTranslations tables) and `GET/PUT /vihkotappelu/data`
+  (VihkotappeluUnits, VihkotappeluUnitTranslations, VihkotappeluFactions,
+  VihkotappeluFactionTranslations, VihkotappeluFactionUnits tables) hold the
+  card texts / game unit+faction data consumed by the tarot and vihkotappelu
+  sites. Base columns are the canonical English texts; per-language texts live
+  in the translation tables. Consumers fetch everything in ONE bulk call and
+  push updates with the bulk PUT. The canonical SEED for these datasets lives
+  in this repo as SQL: `api/Database/reset-tarot-cards.sql` and
+  `api/Database/reset-vihkotappelu.sql` (run via `just reset-tarot-cards` /
+  `just reset-vihkotappelu`); the vihkotappelu repo holds no data files — its
+  `tools/fetch_game_data.js` / `tools/sync_to_klapi.js` dump and push a JSON
+  payload over the bulk endpoints.
 - Secrets come from configuration / environment variables
   (`KLAPI_ADMIN_PASSWORD`, `KLAPI_TAROT_ADMIN_PASSWORD`, `KLAPI_SITE_API_KEY`,
   `Auth:SigningKey` ≥ 32 chars). Never hardcode secrets or commit them.

@@ -1,0 +1,48 @@
+@App_HostAddress = http://localhost:5013
+@SiteApiKey = dev-site-api-key-0123456789abcdef
+
+### Get ALL vihkotappelu game data (units + factions) in a single bulk request — site-to-site API key required
+GET {{App_HostAddress}}/vihkotappelu/data
+Accept: application/json
+X-API-Key: {{SiteApiKey}}
+
+### Replace the whole game data (bulk sync, site-to-site API key required)
+PUT {{App_HostAddress}}/vihkotappelu/data
+Content-Type: application/json
+Accept: application/json
+X-API-Key: {{SiteApiKey}}
+
+{
+  "units": [
+    {
+      "unitKey": "soldiers_of_falroth",
+      "name": "Soldiers of Falroth",
+      "description": "",
+      "hp": 26,
+      "attack": 9,
+      "defence": 3,
+      "movement": 3,
+      "range": 1,
+      "minRange": 1,
+      "sprite": "soldiers_of_falroth",
+      "sortOrder": 0,
+      "translations": {
+        "en": { "name": "Soldiers of Falroth", "description": "" },
+        "fi": { "name": "Falrothin sotilaat", "description": "" }
+      }
+    }
+  ],
+  "factions": [
+    {
+      "id": "dalmen",
+      "name": "Dalmen",
+      "color": "#22c55e",
+      "sortOrder": 0,
+      "translations": {
+        "en": { "name": "Dalmen" },
+        "fi": { "name": "Dalmen" }
+      },
+      "units": ["soldiers_of_falroth"]
+    }
+  ]
+}

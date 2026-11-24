@@ -8,6 +8,7 @@ db_dir := root_dir + "/api/Database"
 db_file := db_dir + "/klapi.db"
 db_init_sql := db_dir + "/init.sql"
 db_reset_tarot_cards_sql := db_dir + "/reset-tarot-cards.sql"
+db_reset_vihkotappelu_sql := db_dir + "/reset-vihkotappelu.sql"
 
 default:
 	@just --list
@@ -74,3 +75,12 @@ reset-tarot-cards:
 	@if ! command -v sqlite3 >/dev/null 2>&1; then echo "sqlite3 is required for reset-tarot-cards" >&2; exit 1; fi
 	sqlite3 {{db_file}} < {{db_reset_tarot_cards_sql}}
 	@echo "TarotCards reset in {{db_file}}: $(sqlite3 {{db_file}} 'SELECT COUNT(*) FROM TarotCards;') cards"
+
+# Reset the vihkotappelu game data (VihkotappeluUnits/VihkotappeluFactions and
+# translation/link tables) to the canonical seed in reset-vihkotappelu.sql —
+# this repo is the home of the vihkotappelu seed data; the vihkotappelu app
+# itself reads it via GET /vihkotappelu/data.
+reset-vihkotappelu:
+	@if ! command -v sqlite3 >/dev/null 2>&1; then echo "sqlite3 is required for reset-vihkotappelu" >&2; exit 1; fi
+	sqlite3 {{db_file}} < {{db_reset_vihkotappelu_sql}}
+	@echo "Vihkotappelu data reset in {{db_file}}: $(sqlite3 {{db_file}} 'SELECT COUNT(*) FROM VihkotappeluUnits;') units, $(sqlite3 {{db_file}} 'SELECT COUNT(*) FROM VihkotappeluFactions;') factions"

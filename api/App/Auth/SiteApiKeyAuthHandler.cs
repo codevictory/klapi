@@ -8,7 +8,10 @@ using Microsoft.Extensions.Options;
 // Site-to-site (machine-to-machine) authentication: the client sends a shared
 // API key in the X-API-Key header, validated against Auth:SiteToSite:ApiKey
 // (env var KLAPI_SITE_API_KEY in production). Successful principals get the
-// machine-only "tarot" role. No portal user exists for site-to-site clients.
+// machine-only site roles ("tarot", "vihkotappelu") — one per consuming site,
+// so each site's backend endpoints stay scoped to that site. The key is
+// compared as a SHA-256 hash in fixed time to avoid timing leaks. No portal
+// user exists for site-to-site clients.
 public class SiteApiKeyAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
   public const string AuthenticationScheme = "SiteApiKey";
@@ -50,7 +53,8 @@ public class SiteApiKeyAuthHandler : AuthenticationHandler<AuthenticationSchemeO
     {
       new(ClaimTypes.Name, "site-to-site"),
       new("username", "site-to-site"),
-      new(ClaimTypes.Role, AppRoles.Tarot)
+      new(ClaimTypes.Role, AppRoles.Tarot),
+      new(ClaimTypes.Role, AppRoles.Vihkotappelu)
     };
 
     var identity = new ClaimsIdentity(claims, AuthenticationScheme);

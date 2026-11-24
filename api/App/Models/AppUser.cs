@@ -9,9 +9,10 @@ public static class AppRoles
   // credentials must not open the tarot admin endpoints.
   public const string TarotAdmin = "tarot-admin";
 
-  // Machine role granted only to site-to-site API key principals; not
-  // assignable to portal users.
+  // Machine roles granted only to site-to-site API key principals; not
+  // assignable to portal users. One per consuming site.
   public const string Tarot = "tarot";
+  public const string Vihkotappelu = "vihkotappelu";
 
   public static readonly IReadOnlyList<string> All = [Lok, Admin, TarotAdmin];
 }

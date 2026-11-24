@@ -50,3 +50,54 @@ CREATE TABLE IF NOT EXISTS TarotCardTranslations (
   description TEXT NOT NULL DEFAULT '',
   PRIMARY KEY (cardId, language)
 );
+
+-- Vihkotappelu (fantasy battle game) unit definitions. The base columns hold
+-- the canonical (English) name/description plus the language-independent
+-- stats; localized texts live in VihkotappeluUnitTranslations.
+CREATE TABLE IF NOT EXISTS VihkotappeluUnits (
+  unitKey TEXT PRIMARY KEY,
+  name TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  hp INTEGER NOT NULL DEFAULT 0,
+  attack INTEGER NOT NULL DEFAULT 0,
+  defence INTEGER NOT NULL DEFAULT 0,
+  movement INTEGER NOT NULL DEFAULT 0,
+  range INTEGER NOT NULL DEFAULT 1,
+  minRange INTEGER NOT NULL DEFAULT 1,
+  sprite TEXT NOT NULL DEFAULT '',
+  sortOrder INTEGER NOT NULL DEFAULT 0,
+  lastUpdated TEXT NOT NULL DEFAULT ''
+);
+
+-- Localized unit names/descriptions (see AppLanguages in the API: fi, en, sk).
+CREATE TABLE IF NOT EXISTS VihkotappeluUnitTranslations (
+  unitKey TEXT NOT NULL REFERENCES VihkotappeluUnits(unitKey) ON DELETE CASCADE,
+  language TEXT NOT NULL DEFAULT '',
+  name TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY (unitKey, language)
+);
+
+-- Vihkotappelu factions (the sides of a match). Base name column is the
+-- canonical (English) name; localized names in VihkotappeluFactionTranslations.
+CREATE TABLE IF NOT EXISTS VihkotappeluFactions (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL DEFAULT '',
+  color TEXT NOT NULL DEFAULT '',
+  sortOrder INTEGER NOT NULL DEFAULT 0,
+  lastUpdated TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS VihkotappeluFactionTranslations (
+  factionId TEXT NOT NULL REFERENCES VihkotappeluFactions(id) ON DELETE CASCADE,
+  language TEXT NOT NULL DEFAULT '',
+  name TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY (factionId, language)
+);
+
+-- Which units belong to which faction.
+CREATE TABLE IF NOT EXISTS VihkotappeluFactionUnits (
+  factionId TEXT NOT NULL REFERENCES VihkotappeluFactions(id) ON DELETE CASCADE,
+  unitKey TEXT NOT NULL REFERENCES VihkotappeluUnits(unitKey) ON DELETE CASCADE,
+  PRIMARY KEY (factionId, unitKey)
+);

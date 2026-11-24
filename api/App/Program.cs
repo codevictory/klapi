@@ -117,6 +117,7 @@ public class Program
         builder.Services.AddScoped<LokService>();
         builder.Services.AddScoped<UserService>();
         builder.Services.AddScoped<TarotService>();
+        builder.Services.AddScoped<VihkotappeluService>();
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("PublicReadCors", policy =>
@@ -199,6 +200,14 @@ public class Program
                 policy.AddAuthenticationSchemes(SiteApiKeyAuthHandler.AuthenticationScheme);
                 policy.RequireAuthenticatedUser();
                 policy.RequireRole(AppRoles.Tarot);
+            });
+
+            // Same for the vihkotappelu game server's endpoints.
+            options.AddPolicy("HasVihkotappeluRole", policy =>
+            {
+                policy.AddAuthenticationSchemes(SiteApiKeyAuthHandler.AuthenticationScheme);
+                policy.RequireAuthenticatedUser();
+                policy.RequireRole(AppRoles.Vihkotappelu);
             });
         });
 
@@ -401,6 +410,7 @@ public class Program
         UserEndpoints.MapUserEndpoints(app);
         FeedbackEndpoints.MapFeedbackEndpoints(app);
         TarotEndpoints.MapTarotEndpoints(app);
+        VihkotappeluEndpoints.MapVihkotappeluEndpoints(app);
         AdminEndpoints.MapAdminEndpoints(app);
 
         app.Run();
